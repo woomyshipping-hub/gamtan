@@ -1,0 +1,579 @@
+{
+ "schema": "settle-fixtures/1",
+ "currency": "KRW",
+ "note": "memo_lines are the only calendar-memo lines the parsers read, copied verbatim; no personal data. synthetic=true rows are rule probes not tied to a real job. expected values were derived by the rules in handoff.json and agreed with the owner's own settlement records for 2026-10-03..10-07 (recv 1436000).",
+ "fixtures": [
+  {
+   "id": "2026-10-03-am-suyeong",
+   "synthetic": false,
+   "date": "2026-10-03",
+   "ampm": "오전",
+   "summary": "[크린토피아] 수영구 35평 아파트 (오전)",
+   "memo_lines": [
+    "추가금: 270,000원",
+    "작업인원: 3명",
+    "외부인원비: 80,000원",
+    "정산: 200,000원 + 추가 202,500원 (정산완료)",
+    "메모: 외부인원 1인 동행 — 8만 원 정산 (35평 280,000원 중, 이 건만 7만 아닌 8만)"
+   ],
+   "expect": {
+    "recv": 402500,
+    "han": 171250,
+    "mine": 231250,
+    "baseAmt": 200000,
+    "exAmt": 202500,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-03-pm-namgu",
+   "synthetic": false,
+   "date": "2026-10-03",
+   "ampm": "오후",
+   "summary": "[크린토피아] 남구 30평 아파트 (오후)",
+   "memo_lines": [
+    "작업인원: 2명",
+    "메모: 오전 수영구 건 외부인원은 오전만 하고 귀가 → 오후는 나+한준님 둘이 작업 (한준님 105,000원)",
+    "정산: 240,000원 (정산완료)"
+   ],
+   "expect": {
+    "recv": 240000,
+    "han": 105000,
+    "mine": 135000,
+    "baseAmt": 240000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-05-am-dongeup",
+   "synthetic": false,
+   "date": "2026-10-05",
+   "ampm": "오전",
+   "summary": "[자체영업] 창원 동읍 19평 아파트 (오전)",
+   "memo_lines": [
+    "정산: 170,000원 (정산완료)",
+    "구분: 자체영업 (홈클린마스터)"
+   ],
+   "expect": {
+    "recv": 170000,
+    "han": 70000,
+    "mine": 100000,
+    "baseAmt": 170000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-05-pm-gimhae9",
+   "synthetic": false,
+   "date": "2026-10-05",
+   "ampm": "오후",
+   "summary": "[자체영업] 김해 9평 오피스텔 (오후)",
+   "memo_lines": [
+    "추가금: 30,000원 (기본 10만 + 추가 3만 = 13만 정산)",
+    "정산(대표 정산내역): 130,000원 + 주차 1,500원"
+   ],
+   "expect": {
+    "recv": 131500,
+    "han": 0,
+    "mine": 131500,
+    "baseAmt": 100000,
+    "exAmt": 30000,
+    "parkAmt": 1500,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-06-pm-jinhae",
+   "synthetic": false,
+   "date": "2026-10-06",
+   "ampm": "오후",
+   "summary": "[크린토피아] 창원 진해구 24평 아파트 (오후)",
+   "memo_lines": [
+    "추가금: 40,000원",
+    "정산: 192,000원 + 추가 30,000원 (정산완료)"
+   ],
+   "expect": {
+    "recv": 222000,
+    "han": 85000,
+    "mine": 137000,
+    "baseAmt": 192000,
+    "exAmt": 30000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-07-am-masan33",
+   "synthetic": false,
+   "date": "2026-10-07",
+   "ampm": "오전",
+   "summary": "[자체영업] 창원 마산회원구 33평 아파트 (오전)",
+   "memo_lines": [
+    "추가금: 100,000원",
+    "작업인원: 3명 (외부인원 포함, 대표 정산 17만 + 추가 10만)",
+    "정산(대표 정산내역): 170,000원 + 추가 100,000원"
+   ],
+   "expect": {
+    "recv": 270000,
+    "han": 120000,
+    "mine": 150000,
+    "baseAmt": 170000,
+    "exAmt": 100000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-08-am-yangdeok",
+   "synthetic": false,
+   "date": "2026-10-08",
+   "ampm": "오전",
+   "summary": "[자체영업] 창원 양덕 23평 아파트 (오전)",
+   "memo_lines": [
+    "정산: 170,000원 (10/15 정산완료)",
+    "구분: 자체영업 (홈클린마스터) · 거주청소"
+   ],
+   "expect": {
+    "recv": 170000,
+    "han": 70000,
+    "mine": 100000,
+    "baseAmt": 170000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-08-pm-busanjin",
+   "synthetic": false,
+   "date": "2026-10-08",
+   "ampm": "오후",
+   "summary": "[크린토피아] 부산진구 25평 오피스텔 (오후)",
+   "memo_lines": [
+    "추가금: 70,000원 (냉장고 3만 + 곰팡이 1구역 4만, 10/8 검수 완료)",
+    "정산: 200,000원 + 추가 52,500원 (10/15 정산완료)"
+   ],
+   "expect": {
+    "recv": 252500,
+    "han": 96250,
+    "mine": 156250,
+    "baseAmt": 200000,
+    "exAmt": 52500,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-09-am-yangsan",
+   "synthetic": false,
+   "date": "2026-10-09",
+   "ampm": "오전",
+   "summary": "[크린토피아] 양산 25평 아파트 (오전)",
+   "memo_lines": [
+    "추가금: 40,000원",
+    "정산: 200,000원 + 추가 30,000원 (10/15 정산완료)"
+   ],
+   "expect": {
+    "recv": 230000,
+    "han": 85000,
+    "mine": 145000,
+    "baseAmt": 200000,
+    "exAmt": 30000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-09-pm-seongsan",
+   "synthetic": false,
+   "date": "2026-10-09",
+   "ampm": "오후",
+   "summary": "[크린토피아] 창원 성산구 38평 아파트 (오후)",
+   "memo_lines": [
+    "추가금: 60,000원",
+    "작업인원: 3명",
+    "정산: 234,000원 + 추가 40,000원 (10/15 정산완료)",
+    "⚠️ 정산 착오: 추가 6만 × 75% = 45,000원이 맞음 → 5,000원 덜 받음 (대표 확인 필요)",
+    "메모: 외부인원 1명, 7만 원 제외 — 38평 304,000원 중"
+   ],
+   "expect": {
+    "recv": 279000,
+    "han": 92500,
+    "mine": 186500,
+    "baseAmt": 234000,
+    "exAmt": 45000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-10-pm-haeundae38",
+   "synthetic": false,
+   "date": "2026-10-10",
+   "ampm": "오후",
+   "summary": "[크린토피아] 해운대구 우동 38평 아파트 (오후)",
+   "memo_lines": [
+    "정산: 234,000원 (10/15 정산완료)",
+    "작업인원: 3명 (외부인원 1명, 7만 원 제외 — 38평 304,000원 중)"
+   ],
+   "expect": {
+    "recv": 234000,
+    "han": 70000,
+    "mine": 164000,
+    "baseAmt": 234000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-12-am-dongnae",
+   "synthetic": false,
+   "date": "2026-10-12",
+   "ampm": "오전",
+   "summary": "[크린토피아] 동래구 20평 아파트 (오전)",
+   "memo_lines": [
+    "추가금: 160,000원"
+   ],
+   "expect": {
+    "recv": 280000,
+    "han": 130000,
+    "mine": 150000,
+    "baseAmt": 160000,
+    "exAmt": 120000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-12-pm-haeundae23",
+   "synthetic": false,
+   "date": "2026-10-12",
+   "ampm": "오후",
+   "summary": "[크린토피아] 해운대구 23평 아파트 (오후)",
+   "memo_lines": [
+    "추가금: 120,000원"
+   ],
+   "expect": {
+    "recv": 274000,
+    "han": 115000,
+    "mine": 159000,
+    "baseAmt": 184000,
+    "exAmt": 90000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-15-am-masan35",
+   "synthetic": false,
+   "date": "2026-10-15",
+   "ampm": "오전",
+   "summary": "[자체영업] 창원 마산회원구 35평 아파트 (오전)",
+   "memo_lines": [
+    "추가금: 150,000원",
+    "작업인원: 2명",
+    "구분: 자체영업 (크린토피아 아님)"
+   ],
+   "expect": {
+    "recv": 390000,
+    "han": 180000,
+    "mine": 210000,
+    "baseAmt": 240000,
+    "exAmt": 150000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-15-pm-gimhae10",
+   "synthetic": false,
+   "date": "2026-10-15",
+   "ampm": "오후",
+   "summary": "[자체영업] 김해 10평 원룸 (오후)",
+   "memo_lines": [
+    "추가금: 30,000원",
+    "작업인원: 2명 (평소 1인 건, 이번엔 한준님 동행)",
+    "한준님 지급: 65,000원 (기본 10만 원 반씩 5만 + 추가금 절반 1.5만)"
+   ],
+   "expect": {
+    "recv": 130000,
+    "han": 65000,
+    "mine": 65000,
+    "baseAmt": 100000,
+    "exAmt": 30000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-16-am-ulju",
+   "synthetic": false,
+   "date": "2026-10-16",
+   "ampm": "오전",
+   "summary": "[크린토피아] 울주군 24평 아파트 (오전)",
+   "memo_lines": [
+    "추가금: 50,000원"
+   ],
+   "expect": {
+    "recv": 229500,
+    "han": 88750,
+    "mine": 140750,
+    "baseAmt": 192000,
+    "exAmt": 37500,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-16-pm-haeundae25",
+   "synthetic": false,
+   "date": "2026-10-16",
+   "ampm": "오후",
+   "summary": "[크린토피아] 해운대구 25평 아파트 (오후)",
+   "memo_lines": [
+    "추가금: 0원"
+   ],
+   "expect": {
+    "recv": 200000,
+    "han": 70000,
+    "mine": 130000,
+    "baseAmt": 200000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-17-pm-bukgu34",
+   "synthetic": false,
+   "date": "2026-10-17",
+   "ampm": "오후",
+   "summary": "[크린토피아] 북구 34평 아파트 (오후)",
+   "memo_lines": [
+    "추가금: 30,000원 (붙박이장)",
+    "작업인원: 3명",
+    "외부인원 1명 동행 예정 (10/16 대표 확인) — 정산 시 외부인원 몫 70,000원 차감"
+   ],
+   "expect": {
+    "recv": 224500,
+    "han": 81250,
+    "mine": 143250,
+    "baseAmt": 202000,
+    "exAmt": 22500,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "2026-10-19-pm-gimhae33",
+   "synthetic": false,
+   "date": "2026-10-19",
+   "ampm": "오후",
+   "summary": "[크린토피아] 김해시 33평 아파트 (오후)",
+   "memo_lines": [
+    "추가금: 40,000원",
+    "작업인원: 2명"
+   ],
+   "expect": {
+    "recv": 294000,
+    "han": 120000,
+    "mine": 174000,
+    "baseAmt": 264000,
+    "exAmt": 30000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-crin38-nocrew",
+   "synthetic": true,
+   "date": "2026-10-20",
+   "ampm": "오전",
+   "summary": "[크린토피아] 테스트 38평 아파트 (오전)",
+   "memo_lines": [],
+   "expect": {
+    "recv": 234000,
+    "han": 70000,
+    "mine": 164000,
+    "baseAmt": 234000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-crin38-crew2",
+   "synthetic": true,
+   "date": "2026-10-20",
+   "ampm": "오후",
+   "summary": "[크린토피아] 테스트 38평 아파트 (오후)",
+   "memo_lines": [
+    "작업인원: 2명"
+   ],
+   "expect": {
+    "recv": 304000,
+    "han": 105000,
+    "mine": 199000,
+    "baseAmt": 304000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-crin42-warn",
+   "synthetic": true,
+   "date": "2026-10-21",
+   "ampm": "오전",
+   "summary": "[크린토피아] 테스트 42평 아파트 (오전)",
+   "memo_lines": [],
+   "expect": {
+    "recv": 336000,
+    "han": 70000,
+    "mine": 266000,
+    "baseAmt": 336000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": true
+   }
+  },
+  {
+   "id": "syn-own12-solo",
+   "synthetic": true,
+   "date": "2026-10-21",
+   "ampm": "오후",
+   "summary": "[자체영업] 테스트 12평 원룸 (오후)",
+   "memo_lines": [],
+   "expect": {
+    "recv": 100000,
+    "han": 0,
+    "mine": 100000,
+    "baseAmt": 100000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-own12-together-extra",
+   "synthetic": true,
+   "date": "2026-10-22",
+   "ampm": "오전",
+   "summary": "[자체영업] 테스트 12평 원룸 (오전)",
+   "memo_lines": [
+    "추가금: 40,000원",
+    "작업인원: 2명"
+   ],
+   "expect": {
+    "recv": 140000,
+    "han": 70000,
+    "mine": 70000,
+    "baseAmt": 100000,
+    "exAmt": 40000,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-own27-crew2",
+   "synthetic": true,
+   "date": "2026-10-22",
+   "ampm": "오후",
+   "summary": "[자체영업] 테스트 27평 아파트 (오후)",
+   "memo_lines": [
+    "작업인원: 2명"
+   ],
+   "expect": {
+    "recv": 240000,
+    "han": 105000,
+    "mine": 135000,
+    "baseAmt": 240000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-own27-crew3",
+   "synthetic": true,
+   "date": "2026-10-23",
+   "ampm": "오전",
+   "summary": "[자체영업] 테스트 27평 아파트 (오전)",
+   "memo_lines": [
+    "작업인원: 3명"
+   ],
+   "expect": {
+    "recv": 170000,
+    "han": 70000,
+    "mine": 100000,
+    "baseAmt": 170000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-own26",
+   "synthetic": true,
+   "date": "2026-10-23",
+   "ampm": "오후",
+   "summary": "[자체영업] 테스트 26평 아파트 (오후)",
+   "memo_lines": [],
+   "expect": {
+    "recv": 170000,
+    "han": 70000,
+    "mine": 100000,
+    "baseAmt": 170000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": false
+   }
+  },
+  {
+   "id": "syn-own40-warn",
+   "synthetic": true,
+   "date": "2026-10-24",
+   "ampm": "오전",
+   "summary": "[자체영업] 테스트 40평 아파트 (오전)",
+   "memo_lines": [],
+   "expect": {
+    "recv": 240000,
+    "han": 105000,
+    "mine": 135000,
+    "baseAmt": 240000,
+    "exAmt": 0,
+    "parkAmt": 0,
+    "warn": true
+   }
+  }
+ ],
+ "week_sums": [
+  {
+   "from": "2026-10-03",
+   "to": "2026-10-07",
+   "recv": 1436000,
+   "han": 551250,
+   "mine": 884750
+  },
+  {
+   "from": "2026-10-08",
+   "to": "2026-10-10",
+   "recv": 1165500,
+   "han": 413750,
+   "mine": 751750
+  },
+  {
+   "from": "2026-10-12",
+   "to": "2026-10-17",
+   "recv": 1728000,
+   "han": 730000,
+   "mine": 998000
+  }
+ ]
+}

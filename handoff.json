@@ -1,0 +1,362 @@
+{
+ "schema": "settle-handoff/1",
+ "authoritative": true,
+ "note": "기계 판독용 단일 진실 원천. HANDOFF.md/README.md는 참고용이며 충돌 시 이 파일이 우선한다. 값은 KRW 정수.",
+ "project": {
+  "name": "gamtan-settle",
+  "purpose": "크린토피아/홈클린마스터 일정(구글 캘린더) → 대표(킴)와 김한준님 정산액 자동 계산 웹페이지",
+  "locale": "ko-KR",
+  "timezone": "Asia/Seoul",
+  "stack": {
+   "frontend": "static html (no framework)",
+   "backend": "vercel serverless (node, api/*.js)",
+   "storage": "redis (npm redis@4.7.0)",
+   "calendar": "google calendar api via service account (JWT RS256); fallback ICAL_URL"
+  },
+  "access": "public url, X-Robots-Tag noindex, no auth",
+  "first_counted_day": "2026-10-01",
+  "last_known_good_deployment": "dpl_DjvZDpTiEQFRvAgvNxAyHVpQvqMK (deployed from equivalent source; byte equality with this folder was not verified)"
+ },
+ "files": {
+  "public/index.html": {
+   "sha256": "4833112bb3b42499ad3a9bd214ae2b65d7b5911ad81bd59dcc36aba7ff3aed1f"
+  },
+  "api/events.js": {
+   "sha256": "70d0724d25f1261807185b4a75f1c820ad1d9d211996b45f767cc8e0eb28b539"
+  },
+  "api/state.js": {
+   "sha256": "4fa0878ece04828bb49299ac379658d5a171fd8d04061325c2c6fb2f2ace7df0"
+  },
+  "package.json": {
+   "sha256": "99a0033c2e42a5e36b0560414010dc7abd9e549dbb73640f9fa853a6cdb9a559"
+  },
+  "vercel.json": {
+   "sha256": "9e95eb395c2e4de495132c35d9fd8574ee59fc33f139a23018ccf38045a22681"
+  },
+  "fixtures.json": {
+   "sha256": "b965ff1dde63cbd24d2c91e62f0b2a81df79fb34a504b6d36e03a61b51d68ab9"
+  },
+  "verify.js": {
+   "sha256": "37a34421abeaedb2059cde20d5e64c8fc0e19d3858550ec3e6beaa316128f159"
+  }
+ },
+ "env": {
+  "required": [
+   {
+    "name": "REDIS_URL",
+    "format": "redis:// or rediss:// connection string",
+    "used_by": "api/state.js",
+    "failure_signature": "GET /api/state -> 503 {error:\"storage not configured\"} or 502 {error:\"storage error\"}"
+   },
+   {
+    "name": "GOOGLE_SERVICE_ACCOUNT_JSON",
+    "format": "entire service-account key JSON as one env value (needs client_email, private_key)",
+    "used_by": "api/events.js",
+    "failure_signature": "GET /api/events -> 502 {error:\"calendar fetch failed\"}"
+   },
+   {
+    "name": "GOOGLE_CALENDAR_ID",
+    "format": "calendar id (email)",
+    "used_by": "api/events.js",
+    "failure_signature": "events empty or 502"
+   }
+  ],
+  "optional": [
+   {
+    "name": "ICAL_URL",
+    "format": "private iCal URL",
+    "used_by": "api/events.js",
+    "condition": "only when GOOGLE_SERVICE_ACCOUNT_JSON is unset"
+   }
+  ],
+  "never_commit": [
+   "REDIS_URL value",
+   "GOOGLE_SERVICE_ACCOUNT_JSON value"
+  ]
+ },
+ "steps": [
+  {
+   "id": 1,
+   "actor": "human",
+   "action": "create GitHub repo; push contents of this folder as repo root",
+   "expect": "repo root contains api/, public/, package.json, vercel.json, verify.js, fixtures.json, handoff.json"
+  },
+  {
+   "id": 2,
+   "actor": "claude",
+   "action": "run local verification before anything else",
+   "command": "node verify.js",
+   "expect": "exit code 0 and last line `TOTAL pass=41 fail=0`"
+  },
+  {
+   "id": 3,
+   "actor": "human",
+   "action": "create a Redis database; provide REDIS_URL to the deploy environment"
+  },
+  {
+   "id": 4,
+   "actor": "human",
+   "action": "google cloud: enable Calendar API; create service account + JSON key; share the target calendar with the service-account email with permission 'See all event details' (free/busy only is NOT enough)",
+   "expect": "calendar id known"
+  },
+  {
+   "id": 5,
+   "actor": "claude",
+   "action": "create vercel project (name free), set env REDIS_URL, GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_CALENDAR_ID for Production; deploy the WHOLE folder",
+   "rules": [
+    "deploy all files in one request; never a partial file set to production (a partial deploy blanks the live alias)",
+    "vercel mcp create_deployment: pass name/project/target=production and the full file list; do not pass teamId/slug unless required (explicit team id returned 403 on the previous account)",
+    "wait for state READY via get_deployment"
+   ]
+  },
+  {
+   "id": 6,
+   "actor": "claude",
+   "action": "check Deployment Protection: unauthenticated GET / must return 200",
+   "command": "node verify.js --url https://<production-alias>",
+   "on_failure": "if GET / is 401/403: Vercel Authentication / Deployment Protection is on -> ask owner to turn it off for production (owner decision: the page is intentionally public)"
+  },
+  {
+   "id": 7,
+   "actor": "claude",
+   "action": "full live verification",
+   "command": "node verify.js --url https://<production-alias>",
+   "expect": "exit code 0; every live:* fixture PASS",
+   "note": "the check 'deployed index.html differs from repo' passes only when deployed bytes equal public/index.html; deploy from this repo so it passes"
+  },
+  {
+   "id": 8,
+   "actor": "claude",
+   "action": "report to owner: URL, verify output summary (pass/fail counts), any FAIL lines verbatim"
+  }
+ ],
+ "verification": {
+  "local": "node verify.js",
+  "live": "node verify.js --url <base-url>",
+  "fixtures": "fixtures.json (28 rows: 19 real jobs + 9 synthetic rule probes; 3 week sums)",
+  "how_it_works": "verify.js slices DEF, parse(), isSolo and calc() out of public/index.html as text and executes them (no duplicated logic), feeds memo_lines through api/events.js helpers (extraOf, crewOf, hanOf, settleOf), then compares recv, han, mine, baseAmt, exAmt, parkAmt, warn.",
+  "pass_criteria": "exit code 0",
+  "live_scope": "live check uses calendar events returned by /api/events and ignores per-job overrides stored via /api/state",
+  "triage": {
+   "live:<id> event not found": "calendar not shared with service account, wrong GOOGLE_CALENDAR_ID, or event title/date edited",
+   "live:<id> recv/han mismatch but local passes": "calendar memo changed (compare memo parsers) or fixture is stale; do not edit fixtures to match without owner confirmation",
+   "GET /api/state 5xx": "REDIS_URL missing/invalid",
+   "GET /api/events 502": "GOOGLE_SERVICE_ACCOUNT_JSON invalid or Calendar API disabled or calendar not shared",
+   "deployed index.html differs": "deployed from a different file set; redeploy from repo root"
+  },
+  "after_every_code_change": [
+   "node verify.js",
+   "update fixtures.json only for owner-approved rule changes",
+   "redeploy full file set",
+   "node verify.js --url <base-url>"
+  ]
+ },
+ "memo_parsers": {
+  "language": "javascript",
+  "source_file": "api/events.js",
+  "functions": {
+   "extraOf": "const extraOf = d => { const m = (d || \"\").match(/추가금\\s*[:：]\\s*([\\d,]+)/); return m ? +m[1].replace(/,/g, \"\") : 0; };",
+   "crewOf": "const crewOf = d => { const m = (d || \"\").match(/작업인원\\s*[:：]\\s*(\\d)\\s*명/); return m ? +m[1] : 0; };",
+   "hanOf": "const hanOf = d => { const m = (d || \"\").match(/한준님[^\\n\\d]{0,8}([\\d]{1,3}(?:,\\d{3})+|\\d{5,})\\s*원/); return m ? +m[1].replace(/,/g, \"\") : 0; };",
+   "settleOf": "const settleOf = d => {\n  const m = (d || \"\").match(/정산[^\\n:：]*[:：]\\s*([\\d,]+)\\s*원(?:\\s*\\+\\s*추가\\s*([\\d,]+)\\s*원)?(?:\\s*\\+\\s*주차\\s*([\\d,]+)\\s*원)?/);\n  const n = v => (v ? +v.replace(/,/g, \"\") : 0);\n  return m ? { settleBase: n(m[1]), settleExtra: n(m[2]), settlePark: n(m[3]) } : { settleBase: 0, settleExtra: 0, settlePark: 0 };\n};"
+  },
+  "fields": {
+   "extraCal": "추가금: N원 -> customer-price extra",
+   "crewCal": "작업인원: N명 -> crew count (single digit)",
+   "hanCal": "한준님 ... N원 -> TOTAL amount paid to 김한준님 for that job, extra share already included",
+   "settleBase": "정산...: N원 -> already-settled base",
+   "settleExtra": "+ 추가 N원 -> already-settled extra (do NOT multiply by 0.75)",
+   "settlePark": "+ 주차 N원 -> parking reimbursement"
+  },
+  "privacy_invariant": "API returns only the 6 numeric fields + id,summary,start,end. memo text (phones, door codes) must never be returned."
+ },
+ "title_rules": {
+  "crinTag": "[크린토피아]",
+  "ownTags": [
+   "[홈클린마스터]",
+   "[자체영업]"
+  ],
+  "display_name_for_own": "홈클린마스터",
+  "pyong_regex": "(\\d+)\\s*평",
+  "ampm": "title contains (오전)|(오후) else start hour<13 => 오전",
+  "cancel_if_title_contains": "취소확인",
+  "ignored_titles": "anything without the tags (e.g. reminder events starting with a phone emoji)"
+ },
+ "defaults_DEF": {
+  "crinPerPy": 8000,
+  "crinExtraRate": 0.75,
+  "hanBase": 70000,
+  "hanCrinExtraShare": 0.5,
+  "hanCrinTwo": 35000,
+  "crinExternal": 70000,
+  "ownSmallMaxPy": 26,
+  "ownLargeMaxPy": 39,
+  "ownRecvSmall": 170000,
+  "ownRecvLarge3": 170000,
+  "ownRecvLarge2": 240000,
+  "hanOwnSmall": 70000,
+  "hanOwnLarge3": 70000,
+  "hanOwnLarge2": 105000,
+  "ownExtraRate": 1,
+  "hanOwnExtraShare": 0.5,
+  "soloMaxPy": 13,
+  "ownRecvSolo": 100000,
+  "hanOwnSoloTogether": 50000
+ },
+ "rules": {
+  "terms": {
+   "recv": "정산받을 총액 (what the owner receives)",
+   "han": "김한준님 지급액",
+   "mine": "킴 = recv - han (owner share)"
+  },
+  "labels_mandatory": {
+   "owner": "킴",
+   "helper": "김한준님",
+   "total": "정산받을 총액",
+   "month_box": "이번 달 킴 정산액",
+   "forbidden": [
+    "내 몫",
+    "김 (alone)",
+    "내가 받을 금액",
+    "입금",
+    "미지급"
+   ]
+  },
+  "crin": {
+   "base": "settleBase if >0 else py*crinPerPy - ext",
+   "ext": "crinExternal(70000) if 27<=py<=39 and crew!=2 else 0 (crew from state.crew or crewCal; unset counts as 3)",
+   "extra": "if extraCal>0: extraCal*crinExtraRate(0.75); elif settleExtra>0 and no extraCal: settleExtra as-is; else 0",
+   "han": "hanBase(70000) + extra*hanCrinExtraShare(0.5); if 27<=py<=39 and crew==2: + hanCrinTwo(35000)",
+   "py_gt_39": "warn=true (4-person special case); amounts still computed, owner must override"
+  },
+  "own": {
+   "note": "settleBase is ignored for own; only settleExtra is used as extra when extraCal==0",
+   "table": [
+    {
+     "py": "1..13",
+     "crew": "1 or unset (alone)",
+     "recv": 100000,
+     "han": 0
+    },
+    {
+     "py": "1..13",
+     "crew": ">=2 (together)",
+     "recv": 100000,
+     "han": 50000
+    },
+    {
+     "py": "14..26",
+     "crew": "any",
+     "recv": 170000,
+     "han": 70000
+    },
+    {
+     "py": "27..39",
+     "crew": "3",
+     "recv": 170000,
+     "han": 70000
+    },
+    {
+     "py": "27..39",
+     "crew": "2 or unset",
+     "recv": 240000,
+     "han": 105000
+    },
+    {
+     "py": ">=40",
+     "crew": "any",
+     "recv": 240000,
+     "han": 105000,
+     "warn": true
+    }
+   ],
+   "extra": "extra*ownExtraRate(1.0) to recv; han += extra*hanOwnExtraShare(0.5) except py<=13 and alone => han share 0",
+   "unset_crew_default": "py<=13 -> alone; py>=14 -> 2"
+  },
+  "common": {
+   "parking": "settlePark added to recv only, never split (all to 킴)",
+   "hanCal_override": "if hanCal>0: han = hanCal (total, replaces computed han incl. extra share)",
+   "override_order": [
+    "memo values",
+    "state.extra / state.crew",
+    "hanCal",
+    "state.recvOverride (recv=value; baseAmt=value; exAmt=0; parkAmt=0; warn cleared)",
+    "state.hanOverride (han=value; extra share=0)",
+    "state.solo (han=0)"
+   ],
+   "counted_in_totals": "job end time <= now AND not cancel AND not state.exclude",
+   "pay_day": "week Monday + 10 days (Thursday of next week)",
+   "first_counted_day": "2026-10-01"
+  }
+ },
+ "display_rules": {
+  "top_box": [
+   "정산받을 총액",
+   "김한준님 지급액",
+   "킴"
+  ],
+  "month_box": [
+   "이번 달 킴 정산액 (정산총액 − 김한준님 지급액)",
+   "이번 달 김한준님 지급액"
+  ],
+  "calendar": "month grid, 7 columns Mon..Sun, each day: 오전 half on top, 오후 half below; day footer shows 킴 and 김한준님 in 만원 (1 decimal)",
+  "job_card_amount": "man2(baseAmt)+(exAmt?\"+\"+man2(exAmt):\"\")+(parkAmt?\"+주차\"+man2(parkAmt):\"\") where man2=n=>(Math.round(n/100)/100)+\"만\"",
+  "job_detail": "recv with 기본+추가금(+주차비); 김한준님 with 기본+추가금 share; 킴 with 기본+추가금(+주차비); breakdown rows hidden when no extra and no parking",
+  "removed_on_purpose": [
+   "입금 체크",
+   "미지급 표시",
+   "예정 작업 포함 합계"
+  ],
+  "py_ge_40": "card prefix '! ', detail tag '40평↑ 4인 확인', top chip '40평 이상 N건 · 4인 작업 확인'"
+ },
+ "api": {
+  "GET /api/events?start&end": "200 {events:[{id,summary,start,end,extraCal,crewCal,hanCal,settleBase,settleExtra,settlePark}],source}",
+  "GET /api/state": "200 {jobs,settings}",
+  "PUT /api/state": "{kind:job,id,data} | {kind:settings,data}; whitelisted fields only",
+  "polling": "page refreshes every 60s and on tab visible",
+  "redis_keys": {
+   "settle:jobs": "hash eventId -> JSON(cleanJob)",
+   "settle:settings": "string JSON"
+  }
+ },
+ "data_migration": {
+  "from_old_redis": "copy keys settle:jobs (hash) and settle:settings (string); skipping them loses only per-job manual overrides and edited rates, not memo-derived amounts"
+ },
+ "invariants": [
+  "never return calendar description text from api/events.js",
+  "never deploy a partial file set to production",
+  "do not change a rule or fixture without owner confirmation",
+  "amounts are integers in KRW; display uses toLocaleString(ko-KR)+원",
+  "verify.js must exit 0 before and after every deployment"
+ ],
+ "known_limits": [
+  "no access control (public)",
+  "price rules for py>=40 are not automated",
+  "crin 27..39 without 작업인원 memo is treated as 3 crew (no +35000)",
+  "hanCal is a total, not a base",
+  "no concurrent-edit handling in state storage",
+  "owner-entered recvOverride hides extra breakdown"
+ ],
+ "owner_known_discrepancy": {
+  "job": "2026-10-09 pm [크린토피아] 창원 성산구 38평",
+  "page": {
+   "recv": 279000,
+   "han": 92500
+  },
+  "owner_ledger": {
+   "recv": 274000
+  },
+  "diff": 5000,
+  "cause": "owner ledger settled extra 40000 where 60000*0.75=45000",
+  "action": "none; fixture keeps 279000"
+ },
+ "owner_preferences": {
+  "language": "ko",
+  "style": "facts and numbers only, concise, no ethical/emotional commentary",
+  "money_format": "KRW with thousands separators; owner also speaks in 만원",
+  "show_calculation": "always show how an amount was derived (base + extra, 75%/100%, 5:5)",
+  "ask_only_when_rule_is_ambiguous": true,
+  "after_deploy": "confirm READY then tell owner to refresh"
+ },
+ "first_prompt_for_new_claude": "Read handoff.json completely, then run `node verify.js` in the repo root and report the last line. Then execute steps[] in order. Do not change rules, fixtures or labels. After deployment run `node verify.js --url <production-url>` and report pass/fail counts and any FAIL lines verbatim."
+}
