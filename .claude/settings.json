@@ -1,5 +1,16 @@
 {
   "description": "Impeccable design detector: immediate-tier checks after Edit/Write on UI files, full-rule deep pass on Stop.",
+  "permissions": {
+    "allow": [
+      "mcp__Supabase",
+      "mcp__github",
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
+    ]
+  },
   "env": {
     "IMPECCABLE_LIVE_COPY_AGENT": "chat"
   },
