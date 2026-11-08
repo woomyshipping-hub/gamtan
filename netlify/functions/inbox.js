@@ -10,7 +10,9 @@ const crypto = require("crypto");
 const { extract } = require("../lib/extract");
 const { makeCalendar, ampmOf, withExtra } = require("../lib/gcal");
 
-const MAX_MESSAGES = 10; // 함수 제한시간(10초) 안에 끝내기 위해 한 번에 10건까지
+const MAX_MESSAGES = 5; // 함수 제한시간(10초) 안에 끝내기 위해 한 번에 5건까지
+const BUDGET_MS = 8000; // 이 시간이 지나면 남은 메시지는 state=new로 두고 다음 호출에서 이어서 처리
+const RETRY_AFTER_MS = 60000; // 다음 호출에서 이어 받을 미처리(new) 메시지의 최소 경과 시간
 const SOURCES = ["kakao", "sms", "channel", "other"];
 const TAG = "[자체영업]"; // 기존 캘린더에서 홈클린마스터(김동현 팀장님) 건을 쓰는 태그
 
@@ -60,6 +62,14 @@ function supabase(env, fetchImpl) {
       if (!r.ok) throw new Error(`supabase insert ${r.status}`);
       return r.json();
     },
+    // 이전 호출에서 시간이 모자라 처리하지 못한 메시지
+    async pending(limit, before) {
+      if (limit <= 0) return [];
+      const q = new URLSearchParams({ state: "eq.new", created_at: `lt.${before}`, order: "created_at.asc", limit: String(limit), select: "*" });
+      const r = await fetchImpl(`${base}?${q}`, { method: "GET", headers });
+      if (!r.ok) throw new Error(`supabase select ${r.status}`);
+      return r.json();
+    },
     async update(id, patch) {
       const r = await fetchImpl(`${base}?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers, body: JSON.stringify(patch) });
       if (!r.ok) throw new Error(`supabase update ${r.status}`);
@@ -96,6 +106,20 @@ function scheduleEvent(p, row) {
   };
 }
 
+// 한 요청 안에서 같은 날짜 캘린더 조회는 한 번만 (등록한 일정은 캐시에 더한다)
+function cachedCalendar(cal) {
+  const days = new Map();
+  return {
+    async ownEventsOn(date) { if (!days.has(date)) days.set(date, await cal.ownEventsOn(date)); return days.get(date); },
+    async insert(event) { const e = await cal.insert(event); const d = event.start.dateTime.slice(0, 10); if (days.has(d)) days.get(d).push({ ...event, ...e }); return e; },
+    async patchDescription(id, description) {
+      const e = await cal.patchDescription(id, description);
+      for (const list of days.values()) for (const x of list) if (x.id === id) x.description = description;
+      return e;
+    },
+  };
+}
+
 async function applySchedule(cal, p, row) {
   if (!p.work_date) return { state: "unmatched", error: "날짜를 찾지 못함" };
   const { ampm, event } = scheduleEvent(p, row);
@@ -115,7 +139,7 @@ async function applyExtra(cal, p) {
   return { state: "extra_applied", gcal_event_id: hits[0].id };
 }
 
-function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extract, now = () => new Date(), calendarImpl } = {}) {
+function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extract, now = () => new Date(), calendarImpl, budgetMs = BUDGET_MS } = {}) {
   return async (event) => {
     if (event.httpMethod !== "POST") return reply(405, { error: "method not allowed" });
     for (const k of ["INBOX_TOKEN", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_SERVICE_ACCOUNT_JSON"]) if (!env[k]) return reply(503, { error: "inbox not configured" });
@@ -138,7 +162,13 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
     let inserted;
     try { inserted = await db.insertNew(rows); } catch (e) { return reply(502, { error: "storage error" }); }
 
-    const result = { received: rows.length, new: inserted.length, skipped_duplicates: rows.length - inserted.length, created: 0, duplicate: 0, extra_applied: 0, unmatched: 0, ignored: 0, error: 0 };
+    const started = Date.now();
+    const result = { received: rows.length, new: inserted.length, skipped_duplicates: rows.length - inserted.length, resumed: 0, created: 0, duplicate: 0, extra_applied: 0, unmatched: 0, ignored: 0, error: 0, deferred: 0 };
+    let leftovers = [];
+    try { leftovers = await db.pending(MAX_MESSAGES - inserted.length, new Date(now().getTime() - RETRY_AFTER_MS).toISOString()); } catch (e) { leftovers = []; }
+    leftovers = leftovers.filter((l) => !inserted.some((r) => r.id === l.id));
+    result.resumed = leftovers.length;
+    inserted = [...leftovers, ...inserted];
     if (inserted.length === 0) return reply(200, result);
 
     let items;
@@ -150,8 +180,10 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
       return reply(200, result); // 원문은 저장됨. 나중에 다시 처리 가능
     }
 
-    const cal = calendarImpl || makeCalendar(env, fetchImpl);
+    const cal = cachedCalendar(calendarImpl || makeCalendar(env, fetchImpl));
+    const writes = [];
     for (const [i, row] of inserted.entries()) {
+      if (Date.now() - started > budgetMs) { result.deferred++; continue; } // state=new 그대로 → 다음 호출에서 처리
       const p = items.find((x) => x.index === i);
       let out;
       try {
@@ -164,8 +196,9 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
       }
       result[out.state]++;
       const parsed = p ? (({ index, ...rest }) => rest)(p) : null;
-      await db.update(row.id, { ...out, parsed }).catch(() => {});
+      writes.push(db.update(row.id, { ...out, parsed }).catch(() => {}));
     }
+    await Promise.all(writes);
     return reply(200, result);
   };
 }
