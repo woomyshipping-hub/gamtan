@@ -9,6 +9,7 @@
 const crypto = require("crypto");
 const { extract } = require("../lib/extract");
 const { makeCalendar, ampmOf, withExtra } = require("../lib/gcal");
+const { supaHeaders } = require("../lib/supa");
 
 const MAX_MESSAGES = 5; // 함수 제한시간(10초) 안에 끝내기 위해 한 번에 5건까지
 const BUDGET_MS = 8000; // 이 시간이 지나면 남은 메시지는 state=new로 두고 다음 호출에서 이어서 처리
@@ -47,10 +48,7 @@ function parseBody(event) {
 
 function supabase(env, fetchImpl) {
   const base = env.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/inbox_messages";
-  const key = env.SUPABASE_SERVICE_ROLE_KEY;
-  // 새 비밀 키(sb_secret_…)는 apikey 헤더만. 예전 service_role 키(JWT, eyJ…)는 Authorization도 같이 보낸다.
-  const headers = { apikey: key, "Content-Type": "application/json" };
-  if (!key.startsWith("sb_")) headers.Authorization = `Bearer ${key}`;
+  const headers = supaHeaders(env.SUPABASE_SERVICE_ROLE_KEY);
   return {
     // 중복(dedupe_key)은 무시하고 새로 들어간 행만 돌려받는다
     async insertNew(rows) {

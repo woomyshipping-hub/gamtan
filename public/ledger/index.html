@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>감탄 장부</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 정산 페이지(/)와 같은 색·글꼴. PC에서 몰아서 입력: 입력줄 → 월 표 → 일용직. 휴대폰에서는 한 줄씩 쌓인다. */
+:root{
+  --bg:#f4f5f2; --card:#ffffff; --ink:#1d2421; --muted:#5f6964; --line:#dfe3de; --sel:#e6efe9;
+  --own:#2f8f5b; --own-soft:#dcefe3; --accent:#24524a; --warn:#b4541b; --warn-soft:#fbe7da;
+  --in:#2f7a50; --out:#1d2421;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121614; --card:#1b211e; --ink:#e7ece9; --muted:#9aa49f; --line:#2c3430; --sel:#22302a;
+  --own:#58b583; --own-soft:#1d3327; --accent:#7cc4b5; --warn:#f0925a; --warn-soft:#3b2519;
+  --in:#6cc493; --out:#e7ece9; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --card:#1b211e; --ink:#e7ece9; --muted:#9aa49f; --line:#2c3430; --sel:#22302a;
+  --own:#58b583; --own-soft:#1d3327; --accent:#7cc4b5; --warn:#f0925a; --warn-soft:#3b2519;
+  --in:#6cc493; --out:#e7ece9; color-scheme:dark}
+*{box-sizing:border-box}
+html{accent-color:var(--accent);scrollbar-color:var(--line) var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;caret-color:var(--accent)}
+::selection{background:var(--own-soft);color:var(--ink)}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:20px 72px;display:grid;gap:20px}
+.num{font-variant-numeric:tabular-nums}
+[hidden]{display:none!important}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:1.35rem;margin:0;font-weight:700}
+h2{font-size:1rem;margin:0;font-weight:700}
+.nav{display:flex;align-items:center;gap:6px}
+.nav strong{min-width:116px;text-align:center}
+.ibtn{font:inherit;display:grid;place-items:center;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;width:36px;height:36px;cursor:pointer;transition:background .15s ease-out}
+.ibtn:hover{background:var(--sel)}
+.ibtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+:is(button,input,select,a):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.status{font-size:.82rem;color:var(--muted);min-height:1.2em}
+.status.err{color:var(--warn)}
+.banner{border-radius:12px;padding:14px 16px;background:var(--warn-soft);color:var(--ink)}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px}
+.phead{display:flex;align-items:baseline;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.phead .sm{font-size:.82rem;color:var(--muted)}
+
+/* 월 요약: 정산 페이지의 figure 줄과 같은 문법 */
+.figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 18px}
+.fig{display:grid;gap:2px;min-width:0}
+.lab{font-size:.78rem;color:var(--muted);letter-spacing:.02em}
+.val{font-size:1.3rem;font-weight:700}
+.fig.net .val{color:var(--accent)}
+.fig.neg .val{color:var(--warn)}
+.bycat{display:flex;flex-wrap:wrap;gap:4px 16px;border-top:1px solid var(--line);padding-top:12px;font-size:.85rem;color:var(--muted);margin:0;padding-left:0;list-style:none}
+.bycat b{color:var(--ink);font-weight:500}
+
+/* 입력줄 */
+form.add{display:grid;grid-template-columns:150px auto 120px minmax(120px,1fr) 150px minmax(140px,1.4fr) auto;gap:8px;align-items:end}
+form.add.noworker{grid-template-columns:150px auto 120px 150px minmax(160px,2fr) auto}
+.fld{display:grid;gap:4px;min-width:0}
+.fld > span{font-size:.75rem;color:var(--muted)}
+input,select{font:inherit;font-size:.95rem;height:38px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);padding:0 10px;min-width:0;width:100%}
+input::placeholder{color:var(--muted);opacity:1}
+input[aria-invalid="true"]{border-color:var(--warn)}
+.seg{display:inline-grid;grid-auto-flow:column;border:1px solid var(--line);border-radius:8px;overflow:hidden;height:38px}
+.seg button{font:inherit;font-size:.9rem;border:0;background:var(--card);color:var(--muted);padding:0 14px;cursor:pointer;transition:background .15s ease-out,color .15s ease-out}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--card);font-weight:500}
+.amt-hint{font-size:.78rem;color:var(--muted);margin:-6px 0 0}
+.amt-hint:empty{display:none}
+.pbtn{font:inherit;font-weight:500;height:38px;border:0;border-radius:8px;background:var(--accent);color:var(--card);padding:0 18px;cursor:pointer;transition:opacity .15s ease-out}
+.pbtn:hover{opacity:.9}
+.pbtn:disabled{opacity:.5;cursor:default}
+.formnote{font-size:.78rem;color:var(--muted);margin:0}
+
+/* 월 표 */
+.tablewrap{overflow-x:auto;margin-inline:-16px;padding-inline:16px}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{font-size:.75rem;font-weight:500;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr{transition:background .15s ease-out}
+tbody tr:hover{background:var(--sel)}
+tbody tr.fresh{background:var(--own-soft)}
+td.d{white-space:nowrap;color:var(--muted)}
+td.nw,th{white-space:nowrap}
+td.memo{min-width:180px;overflow-wrap:anywhere}
+td.memo .w{display:block;font-size:.8rem;color:var(--muted)}
+.r{text-align:right;white-space:nowrap}
+td.in{color:var(--in);font-weight:500}
+td.out{color:var(--out)}
+tfoot td{font-weight:700;border-bottom:0;border-top:2px solid var(--line)}
+.del{font:inherit;font-size:.8rem;border:1px solid transparent;background:none;color:var(--muted);border-radius:6px;padding:2px 8px;cursor:pointer}
+.del:hover{border-color:var(--line);color:var(--ink)}
+.del.arm{border-color:var(--warn);color:var(--warn)}
+.empty{color:var(--muted);font-size:.9rem;padding:18px 8px;text-align:center}
+.skel td{color:transparent}
+.skel td span{display:block;height:14px;border-radius:4px;background:var(--line);opacity:.6}
+
+/* 일용직 */
+form.wadd{display:grid;grid-template-columns:minmax(100px,1fr) minmax(130px,1fr) minmax(160px,1.2fr) auto;gap:8px;align-items:end}
+.rrn{letter-spacing:.02em}
+
+@media (max-width:820px){
+  form.add,form.add.noworker{grid-template-columns:1fr 1fr}
+  form.add .fld.memo,form.add .pbtn{grid-column:1/-1}
+  form.wadd{grid-template-columns:1fr 1fr}
+  form.wadd .pbtn{grid-column:1/-1}
+  .figs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fig.net{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>감탄 장부</h1>
+    <div class="nav">
+      <button class="ibtn" id="prev" type="button" aria-label="이전 달"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <strong id="mlabel" class="num" aria-live="polite"></strong>
+      <button class="ibtn" id="next" type="button" aria-label="다음 달"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+  </header>
+
+  <div class="banner" id="locked" hidden>
+    이 장부는 비밀 주소로만 열립니다. 대표님이 받은 장부 주소(끝에 <b>#k=</b>가 붙은 주소)로 다시 열어주세요.
+  </div>
+
+  <main id="app" hidden>
+    <div style="display:grid;gap:20px">
+      <section class="panel" aria-labelledby="sumh">
+        <div class="phead"><h2 id="sumh">이번 달</h2><span class="sm" id="count"></span></div>
+        <div class="figs">
+          <div class="fig"><span class="lab">수입</span><span class="val num" id="sIn">-</span></div>
+          <div class="fig"><span class="lab">지출</span><span class="val num" id="sOut">-</span></div>
+          <div class="fig net" id="netFig"><span class="lab">남은 돈 (수입 − 지출)</span><span class="val num" id="sNet">-</span></div>
+        </div>
+        <ul class="bycat num" id="bycat" aria-label="지출 분류별 합계"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="addh">
+        <div class="phead"><h2 id="addh">기록 추가</h2><span class="sm">Enter로 바로 추가 · 날짜와 분류는 다음 줄에도 유지</span></div>
+        <form class="add noworker" id="addForm" autocomplete="off" novalidate>
+          <label class="fld"><span>날짜</span><input type="date" id="fDate" required></label>
+          <div class="fld"><span id="kindLab">구분</span>
+            <div class="seg" role="group" aria-labelledby="kindLab">
+              <button type="button" data-kind="expense" aria-pressed="true">지출</button>
+              <button type="button" data-kind="income" aria-pressed="false">수입</button>
+            </div>
+          </div>
+          <label class="fld"><span>분류</span><select id="fCat"></select></label>
+          <label class="fld" id="workerFld" hidden><span>일용직</span><select id="fWorker"><option value="">선택 안 함</option></select></label>
+          <label class="fld"><span>금액</span><input id="fAmt" class="num" inputmode="numeric" placeholder="예: 35만, 82,000" required aria-describedby="amtHint"></label>
+          <label class="fld memo"><span>메모</span><input id="fMemo" maxlength="200" placeholder="예: 11/6 마산 33평, 주유"></label>
+          <button class="pbtn" id="addBtn" type="submit">추가</button>
+        </form>
+        <p class="amt-hint num" id="amtHint" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="listh">
+        <div class="phead"><h2 id="listh">기록</h2><span class="status" id="status" role="status"></span></div>
+        <div class="tablewrap">
+          <table class="num">
+            <thead><tr><th>날짜</th><th>분류</th><th>내용</th><th class="r">수입</th><th class="r">지출</th><th><span class="vh" hidden>삭제</span></th></tr></thead>
+            <tbody id="rows"></tbody>
+            <tfoot id="foot" hidden><tr><td colspan="3">합계</td><td class="r" id="tIn"></td><td class="r" id="tOut"></td><td></td></tr></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="wh">
+        <div class="phead"><h2 id="wh">일용직</h2><span class="sm">주민번호는 가려서 표시합니다. 지급은 위 입력줄에서 분류 "인건비"로 기록하세요.</span></div>
+        <div class="tablewrap">
+          <table class="num">
+            <thead><tr><th>이름</th><th>연락처</th><th>주민번호</th><th class="r">이번 달 지급</th></tr></thead>
+            <tbody id="wrows"></tbody>
+          </table>
+        </div>
+        <form class="wadd" id="wForm" autocomplete="off" novalidate>
+          <label class="fld"><span>이름</span><input id="wName" maxlength="40" required></label>
+          <label class="fld"><span>연락처</span><input id="wPhone" inputmode="tel" maxlength="20" placeholder="010-0000-0000"></label>
+          <label class="fld"><span>주민번호 (신고용)</span><input id="wRrn" class="rrn num" inputmode="numeric" maxlength="14" placeholder="000000-0000000"></label>
+          <button class="pbtn" type="submit">일용직 추가</button>
+        </form>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const CATS = { expense: ["인건비", "차량", "장비", "세제", "통신비", "기타"], income: ["매출"] };
+  const KEY_STORE = "gamtan.ledgerKey";
+  const $ = (id) => document.getElementById(id);
+  const won = (n) => (Math.round(n) || 0).toLocaleString("ko-KR") + "원";
+  const pad = (n) => String(n).padStart(2, "0");
+  const today = () => { const d = new Date(Date.now() + 9 * 3600e3); return d.toISOString().slice(0, 10); };
+
+  // 비밀 키: #k=... 로 처음 열면 이 브라우저에 저장하고 주소창에서는 지운다
+  let key = null;
+  const m = location.hash.match(/k=([A-Za-z0-9_-]{16,})/);
+  try { if (m) localStorage.setItem(KEY_STORE, m[1]); key = m ? m[1] : localStorage.getItem(KEY_STORE); } catch (e) { key = m ? m[1] : null; }
+  if (m) history.replaceState(null, "", location.pathname + location.search);
+
+  const state = { month: today().slice(0, 7), kind: "expense", entries: [], workers: [], fresh: null };
+
+  async function api(method, qs, body) {
+    const r = await fetch("/api/ledger" + (qs || ""), {
+      method,
+      headers: { "x-ledger-key": key || "", ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { lock(); throw new Error("unauthorized"); }
+    if (!r.ok) throw new Error(j.error || "저장소 오류 (" + r.status + ")");
+    return j;
+  }
+
+  function lock() {
+    try { localStorage.removeItem(KEY_STORE); } catch (e) {}
+    $("app").hidden = true; $("locked").hidden = false;
+  }
+
+  function setStatus(msg, err) { const s = $("status"); s.textContent = msg || ""; s.classList.toggle("err", !!err); }
+
+  // "35만" → 350000, "3.5만" → 35000, "35만5천" → 355000, "82,000" → 82000
+  function parseAmount(s) {
+    const t = String(s || "").replace(/[\s,원]/g, "");
+    if (!t) return null;
+    const mm = t.match(/^(\d+(?:\.\d+)?)만(?:(\d+(?:\.\d+)?)천)?$/);
+    if (mm) return Math.round(parseFloat(mm[1]) * 10000 + (mm[2] ? parseFloat(mm[2]) * 1000 : 0));
+    const mc = t.match(/^(\d+(?:\.\d+)?)천$/);
+    if (mc) return Math.round(parseFloat(mc[1]) * 1000);
+    return /^\d+$/.test(t) ? parseInt(t, 10) : null;
+  }
+
+  function fillCats() {
+    const sel = $("fCat"), prev = sel.value;
+    sel.innerHTML = CATS[state.kind].map((c) => `<option>${c}</option>`).join("");
+    if (CATS[state.kind].includes(prev)) sel.value = prev;
+    for (const b of document.querySelectorAll(".seg button")) b.setAttribute("aria-pressed", String(b.dataset.kind === state.kind));
+    syncWorkerField();
+  }
+
+  function syncWorkerField() {
+    const show = $("fCat").value === "인건비" && state.workers.length > 0;
+    $("workerFld").hidden = !show;
+    $("addForm").classList.toggle("noworker", !show);
+    if (!show) $("fWorker").value = "";
+  }
+
+  function fillWorkers() {
+    const sel = $("fWorker"), prev = sel.value;
+    sel.innerHTML = '<option value="">선택 안 함</option>' + state.workers.map((w) => `<option value="${w.id}">${esc(w.name)}</option>`).join("");
+    sel.value = state.workers.some((w) => w.id === prev) ? prev : "";
+    syncWorkerField();
+  }
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function render() {
+    const [y, mo] = state.month.split("-").map(Number);
+    $("mlabel").textContent = `${y}년 ${mo}월`;
+    const ins = state.entries.filter((e) => e.kind === "income"), outs = state.entries.filter((e) => e.kind === "expense");
+    const sIn = ins.reduce((a, e) => a + e.amount, 0), sOut = outs.reduce((a, e) => a + e.amount, 0);
+    $("sIn").textContent = won(sIn); $("sOut").textContent = won(sOut); $("sNet").textContent = won(sIn - sOut);
+    $("netFig").classList.toggle("neg", sIn - sOut < 0);
+    $("count").textContent = state.entries.length ? `${state.entries.length}건` : "";
+    const byCat = CATS.expense.map((c) => [c, outs.filter((e) => e.category === c).reduce((a, e) => a + e.amount, 0)]).filter(([, v]) => v > 0);
+    $("bycat").innerHTML = byCat.length ? byCat.map(([c, v]) => `<li>${c} <b>${won(v)}</b></li>`).join("") : "<li>지출 기록이 아직 없습니다</li>";
+
+    const wname = Object.fromEntries(state.workers.map((w) => [w.id, w.name]));
+    $("rows").innerHTML = state.entries.length ? state.entries.map((e) => `
+      <tr data-id="${e.id}"${e.id === state.fresh ? ' class="fresh"' : ""}>
+        <td class="d">${e.entry_date.slice(5).replace("-", "/")}</td>
+        <td class="nw">${e.category}</td>
+        <td class="memo">${esc(e.memo || "")}${e.worker_id ? `<span class="w">일용직 ${esc(wname[e.worker_id] || "")}</span>` : ""}</td>
+        <td class="r in">${e.kind === "income" ? won(e.amount) : ""}</td>
+        <td class="r out">${e.kind === "expense" ? won(e.amount) : ""}</td>
+        <td class="r"><button class="del" type="button" data-del="${e.id}" aria-label="${e.entry_date} ${e.category} ${won(e.amount)} 삭제">삭제</button></td>
+      </tr>`).join("") : `<tr><td colspan="6" class="empty">${y}년 ${mo}월 기록이 없습니다. 위 입력줄에 금액을 넣고 Enter를 누르면 여기에 쌓입니다.</td></tr>`;
+    $("foot").hidden = !state.entries.length;
+    $("tIn").textContent = won(sIn); $("tOut").textContent = won(sOut);
+
+    const paid = {};
+    for (const e of outs) if (e.worker_id) paid[e.worker_id] = (paid[e.worker_id] || 0) + e.amount;
+    $("wrows").innerHTML = state.workers.length ? state.workers.map((w) => `
+      <tr><td class="nw">${esc(w.name)}</td><td class="nw">${esc(w.phone || "")}</td><td class="rrn nw">${esc(w.rrn_masked || "")}</td><td class="r">${paid[w.id] ? won(paid[w.id]) : ""}</td></tr>`).join("")
+      : `<tr><td colspan="4" class="empty">등록된 일용직이 없습니다. 아래에서 추가하면 지급 기록에 이름을 붙일 수 있습니다.</td></tr>`;
+  }
+
+  function skeleton() {
+    $("rows").innerHTML = Array.from({ length: 4 }, () => `<tr class="skel">${"<td><span></span></td>".repeat(6)}</tr>`).join("");
+  }
+
+  async function load() {
+    skeleton(); setStatus("불러오는 중");
+    try {
+      const j = await api("GET", "?month=" + state.month);
+      state.entries = j.entries; state.workers = j.workers;
+      fillWorkers(); render(); setStatus("");
+    } catch (e) { if (e.message !== "unauthorized") { setStatus("불러오지 못했습니다: " + e.message + ". 새로고침해 주세요.", true); } }
+  }
+
+  function shiftMonth(d) {
+    let [y, mo] = state.month.split("-").map(Number);
+    mo += d; if (mo === 0) { mo = 12; y--; } if (mo === 13) { mo = 1; y++; }
+    state.month = `${y}-${pad(mo)}`;
+    if ($("fDate").value.slice(0, 7) !== state.month) $("fDate").value = state.month === today().slice(0, 7) ? today() : `${state.month}-01`;
+    load();
+  }
+
+  $("prev").onclick = () => shiftMonth(-1);
+  $("next").onclick = () => shiftMonth(1);
+  for (const b of document.querySelectorAll(".seg button")) b.onclick = () => { state.kind = b.dataset.kind; fillCats(); };
+  $("fCat").onchange = syncWorkerField;
+  $("fAmt").oninput = () => {
+    const v = parseAmount($("fAmt").value);
+    $("fAmt").removeAttribute("aria-invalid");
+    $("amtHint").textContent = $("fAmt").value.trim() ? (v ? "= " + won(v) : "금액을 읽을 수 없습니다. 예: 35만, 82000") : "";
+  };
+
+  $("addForm").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const amount = parseAmount($("fAmt").value);
+    if (!amount) { $("fAmt").setAttribute("aria-invalid", "true"); $("amtHint").textContent = "금액을 넣어주세요. 예: 35만, 82000"; $("fAmt").focus(); return; }
+    if (!$("fDate").value) { $("fDate").focus(); return; }
+    const btn = $("addBtn"); btn.disabled = true; btn.textContent = "저장 중";
+    try {
+      const { entry } = await api("POST", "", { type: "entry", entry_date: $("fDate").value, kind: state.kind, category: $("fCat").value, amount, memo: $("fMemo").value, worker_id: $("fWorker").value || null });
+      if (entry.entry_date.slice(0, 7) === state.month) {
+        state.entries.push(entry);
+        state.entries.sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.created_at.localeCompare(b.created_at));
+        state.fresh = entry.id;
+        setStatus(`${entry.entry_date.slice(5).replace("-", "/")} ${entry.category} ${won(entry.amount)} 추가됨`);
+      } else {
+        setStatus(`${entry.entry_date} 기록은 ${entry.entry_date.slice(0, 7)} 달에 추가됨`);
+      }
+      render();
+      $("fAmt").value = ""; $("fMemo").value = ""; $("amtHint").textContent = ""; $("fAmt").focus();
+    } catch (e) { if (e.message !== "unauthorized") setStatus("추가하지 못했습니다: " + e.message, true); }
+    finally { btn.disabled = false; btn.textContent = "추가"; }
+  };
+
+  // 삭제: 한 번 누르면 "삭제 확인"으로 바뀌고 3초 안에 한 번 더 눌러야 지운다
+  $("rows").onclick = async (ev) => {
+    const b = ev.target.closest("[data-del]"); if (!b) return;
+    if (!b.classList.contains("arm")) {
+      b.classList.add("arm"); b.textContent = "삭제 확인";
+      setTimeout(() => { b.classList.remove("arm"); b.textContent = "삭제"; }, 3000);
+      return;
+    }
+    b.disabled = true;
+    try {
+      await api("DELETE", "?id=" + b.dataset.del);
+      state.entries = state.entries.filter((e) => e.id !== b.dataset.del);
+      render(); setStatus("삭제됨");
+    } catch (e) { b.disabled = false; if (e.message !== "unauthorized") setStatus("삭제하지 못했습니다: " + e.message, true); }
+  };
+
+  $("wForm").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const name = $("wName").value.trim();
+    if (!name) { $("wName").focus(); return; }
+    const rrn = $("wRrn").value.trim();
+    if (rrn && rrn.replace(/\D/g, "").length !== 13) { $("wRrn").setAttribute("aria-invalid", "true"); setStatus("주민번호는 13자리입니다", true); $("wRrn").focus(); return; }
+    $("wRrn").removeAttribute("aria-invalid");
+    try {
+      const { worker } = await api("POST", "", { type: "worker", name, phone: $("wPhone").value, rrn: rrn || null });
+      state.workers.push(worker); state.workers.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+      fillWorkers(); render();
+      $("wName").value = ""; $("wPhone").value = ""; $("wRrn").value = "";
+      setStatus(`일용직 ${worker.name} 추가됨`);
+    } catch (e) { if (e.message !== "unauthorized") setStatus("일용직을 추가하지 못했습니다: " + e.message, true); }
+  };
+
+  if (!key) { lock(); return; }
+  $("app").hidden = false;
+  $("fDate").value = today();
+  fillCats();
+  load();
+})();
+</script>
+</body>
+</html>

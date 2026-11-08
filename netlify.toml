@@ -19,6 +19,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/ledger"
+  to = "/.netlify/functions/ledger"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/state"
   to = "/.netlify/functions/state"
   status = 200
