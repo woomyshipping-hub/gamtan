@@ -58,7 +58,11 @@ console.log(`local: pass=${pass} fail=${fail}  index.html sha256=${sha(fs.readFi
     const get = async (p) => { const r = await fetch(base + p); return { status: r.status, buf: Buffer.from(await r.arrayBuffer()) }; };
     const page = await get("/");
     page.status === 200 ? ok() : bad("GET / " + page.status);
-    sha(page.buf) === sha(fs.readFileSync(path.join(dir, "public/index.html"))) ? ok() : bad("deployed index.html differs from repo public/index.html");
+    // Netlify가 배포 HTML에 자동 삽입하는 부분만 제거 후 비교: (1) "This site is hosted on Netlify" 주석, (2) src가 /.netlify/scripts/ 로 시작하는 script 태그
+    const stripNetlify = (h) => h
+      .replace(/\n?<!--\s*This site is hosted on Netlify[\s\S]*?-->/g, "")
+      .replace(/\n?<script\b[^>]*\ssrc=["']?\/\.netlify\/scripts\/[^>]*>\s*<\/script>/g, "");
+    sha(stripNetlify(page.buf.toString("utf8"))) === sha(fs.readFileSync(path.join(dir, "public/index.html"), "utf8")) ? ok() : bad("deployed index.html differs from repo public/index.html");
     const st = await get("/api/state");
     st.status === 200 ? ok() : bad("GET /api/state " + st.status + " (REDIS_URL?)");
     const ev = await get("/api/events?start=2026-10-01&end=2026-10-31");
