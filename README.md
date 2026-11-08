@@ -12,3 +12,4 @@
 - `netlify.toml`: 화면은 `public/`, `/api/events`·`/api/state`는 `netlify/functions/*.js`로 연결된다.
 - `netlify/lib/adapter.js`가 Netlify 요청을 Vercel 형식 `(req, res)`로 바꿔 `api/*.js`를 **수정 없이** 실행한다 (`handoff.json`의 sha256 유지).
 - 환경변수는 위 3개를 Netlify 사이트 설정에 등록한다. 배포 후 `node verify.js --url <Netlify 주소>`.
+- `/api/state`는 어댑터에서 5초 제한을 둔다. Redis 접속 실패 시 30초 멈추지 않고 5초 안에 `502 {"error":"storage error"}`(기존 실패 응답과 동일)로 끝난다.

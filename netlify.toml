@@ -13,6 +13,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/inbox"
+  to = "/.netlify/functions/inbox"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/state"
   to = "/.netlify/functions/state"
   status = 200
