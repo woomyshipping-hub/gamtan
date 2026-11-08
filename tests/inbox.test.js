@@ -99,3 +99,14 @@ test("extract: 요청 형식과 refusal 처리", async () => {
   const refuse = { messages: { create: async () => ({ stop_reason: "refusal", stop_details: null, content: [] }) } };
   await assert.rejects(extract([{ index: 0, text: "x" }], { client: refuse }), /refused/);
 });
+
+test("Supabase 키 형식별 헤더: sb_secret은 apikey만, 예전 JWT 키는 Authorization도", async () => {
+  for (const [key, wantAuth] of [["sb_secret_abc", undefined], ["eyJhbGciOi.x.y", "Bearer eyJhbGciOi.x.y"]]) {
+    const w = fakeWorld();
+    const seen = [];
+    const fetchImpl = (url, opt) => { if (url.includes("/rest/v1/")) seen.push(opt.headers); return w.fetchImpl(url, opt); };
+    await makeHandler({ env: { ...ENV, SUPABASE_SERVICE_ROLE_KEY: key }, fetchImpl, extractImpl: fakeExtract })(ev(MSGS));
+    assert.ok(seen.length > 0);
+    for (const h of seen) { assert.equal(h.apikey, key); assert.equal(h.Authorization, wantAuth); }
+  }
+});

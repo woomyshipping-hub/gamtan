@@ -39,7 +39,10 @@ function parseBody(event) {
 
 function supabase(env, fetchImpl) {
   const base = env.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/inbox_messages";
-  const headers = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" };
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+  // 새 비밀 키(sb_secret_…)는 apikey 헤더만. 예전 service_role 키(JWT, eyJ…)는 Authorization도 같이 보낸다.
+  const headers = { apikey: key, "Content-Type": "application/json" };
+  if (!key.startsWith("sb_")) headers.Authorization = `Bearer ${key}`;
   return {
     // 중복(dedupe_key)은 무시하고 새로 들어간 행만 돌려받는다
     async insertNew(rows) {
