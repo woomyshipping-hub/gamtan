@@ -1,2 +1,11 @@
 node_modules/
 .netlify/
+# 디자인 스킬 생성물 (엔진 바이너리·캐시·로컬 설정은 커밋하지 않음)
+**/skills/impeccable/scripts/bin/
+**/skills/impeccable/scripts/config.json
+**/.impeccable/hook.cache.json
+**/.impeccable/hook.pending.json
+.impeccable/live/
+.impeccable/history/
+.impeccable/config.local.json
+.taste-skill/

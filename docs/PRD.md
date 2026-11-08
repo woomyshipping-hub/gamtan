@@ -220,7 +220,11 @@
 - **해피콜:** 작업 전 고객 안내 연락
 - **상담 리스트:** AI 1차 응대 후 반응이 있는 고객 중 대표가 전화할 대상
 
-### 리마인드: 디자인 스킬 설치 (화면 작업 전에 반드시)
+### 디자인 스킬 설치 ✅ (2026-11-08, impeccable 4.8.1 · design-taste-frontend 2.5.1)
+- 설치 위치: `.claude/skills/impeccable`, `.claude/skills/design-taste-frontend`, 훅·환경변수는 `.claude/settings.json`
+- 클라우드 세션에서는 `impeccable.style`이 막혀 있어 GitHub 원본(`pbakaus/impeccable`, `Leonxlnx/taste-skill`)의 같은 버전 파일을 복사했다. impeccable 엔진은 첫 실행 때 GitHub 릴리스에서 받고 체크섬을 검증한다
+- 업데이트: 맥북·데스크톱에서 아래 명령을 다시 실행하고 커밋한다
+
 - 대상: 새 공개 홈페이지와 정산 페이지(이후 운영 시스템 화면 포함) **둘 다**. 둘 다 이 저장소 계정에 있으므로 이 저장소에 한 번 설치한다
 - 시점: M0에서 정산 페이지 화면을 처음 손대기 전, 그리고 홈페이지 디자인 작업 전
 - 방법: 각 저장소에 프로젝트 범위로 설치하고 커밋한다 (맥북, 데스크톱, 클라우드에서 공통으로 사용)
