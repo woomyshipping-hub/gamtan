@@ -18,14 +18,20 @@ const SCHEDULE_TEXT = `6일건
 시간 : 오후 1시 또는 1시 반`;
 const EXTRA_TEXT = "오후 추가 7만원있습니다";
 
-function fakeDb() {
+function fakeDb(clock = () => new Date().toISOString()) {
   const rows = new Map();
   let n = 0;
   const fetchImpl = async (url, opt) => {
     if (opt.method === "POST") {
       const out = [];
-      for (const r of JSON.parse(opt.body)) if (!rows.has(r.dedupe_key)) { const row = { id: `id${++n}`, state: "new", ...r }; rows.set(r.dedupe_key, row); out.push(row); }
+      for (const r of JSON.parse(opt.body)) if (!rows.has(r.dedupe_key)) { const row = { id: `id${++n}`, state: "new", created_at: clock(), ...r }; rows.set(r.dedupe_key, row); out.push(row); }
       return { ok: true, json: async () => out };
+    }
+    if (opt.method === "GET") {
+      const q = new URL(url).searchParams;
+      const before = q.get("created_at").slice(3);
+      const out = [...rows.values()].filter((r) => r.state === "new" && r.created_at < before).slice(0, +q.get("limit"));
+      return { ok: true, json: async () => out.map((r) => ({ ...r })) };
     }
     if (opt.method === "PATCH") {
       const id = decodeURIComponent(url.split("id=eq.")[1]);
@@ -65,7 +71,7 @@ test("인증·설정·형식 검사", async () => {
   assert.equal((await h({ ...ev(ok), headers: {} })).statusCode, 401);
   assert.equal((await makeHandler({ env: {}, fetchImpl: db.fetchImpl })(ev(ok))).statusCode, 503);
   assert.equal((await h(ev([]))).statusCode, 400);
-  assert.equal((await h(ev(Array(11).fill(ok[0])))).statusCode, 400);
+  assert.equal((await h(ev(Array(6).fill(ok[0])))).statusCode, 400);
   assert.equal((await h({ ...ev(ok), body: "{not json" })).statusCode, 400);
   assert.equal((await h({ httpMethod: "GET", headers: {} })).statusCode, 405);
   assert.equal(db.rows.size, 0);
@@ -190,4 +196,37 @@ test("extract: 요청 형식과 refusal 처리", async () => {
   assert.match(req.messages[0].content, /2026-11-08 10:00/);
   const refuse = { messages: { create: async () => ({ stop_reason: "refusal", stop_details: null, content: [] }) } };
   await assert.rejects(extract([{ index: 0, text: "x" }], { client: refuse }), /refused/);
+});
+
+test("시간이 모자라면 남은 메시지는 new로 두고(deferred), 1분 뒤 다음 호출에서 이어서 처리(resumed)", async () => {
+  let clock = "2026-11-08T12:00:00.000Z";
+  const db = fakeDb(() => clock), cal = fakeCal();
+  const slowCal = { ...cal, insert: async (e) => { await new Promise((r) => setTimeout(r, 30)); return cal.insert(e); } };
+  const h1 = makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: fakeExtract, calendarImpl: slowCal, budgetMs: 10, now: () => new Date(clock) });
+  const other = msg("네 알겠습니다", "2026-11-04T16:12:00+09:00");
+  const r1 = JSON.parse((await h1(ev([msg(SCHEDULE_TEXT, "2026-11-04T16:11:00+09:00"), other]))).body);
+  assert.equal(r1.created, 1);
+  assert.equal(r1.deferred, 1);
+  assert.equal(db.byText("네 알겠습니다").state, "new");
+
+  clock = "2026-11-08T12:02:00.000Z";
+  const h2 = makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: fakeExtract, calendarImpl: cal, now: () => new Date(clock) });
+  const r2 = JSON.parse((await h2(ev([msg(EXTRA_TEXT, "2026-11-06T18:30:00+09:00")]))).body);
+  assert.equal(r2.resumed, 1);
+  assert.equal(r2.ignored, 1);
+  assert.equal(r2.extra_applied, 1);
+  assert.equal(db.byText("네 알겠습니다").state, "ignored");
+  assert.equal(cal.events.length, 1);
+  assert.match(cal.events[0].description, /^추가금: 70,000원/);
+});
+
+test("같은 날짜 캘린더 조회는 요청당 한 번", async () => {
+  const db = fakeDb(), cal = fakeCal();
+  let lists = 0;
+  const counted = { ...cal, ownEventsOn: async (d) => { lists++; return cal.ownEventsOn(d); } };
+  const r = JSON.parse((await makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: fakeExtract, calendarImpl: counted })(ev([msg(SCHEDULE_TEXT, "2026-11-04T16:11:00+09:00"), msg(EXTRA_TEXT, "2026-11-06T18:30:00+09:00")]))).body);
+  assert.equal(r.created, 1);
+  assert.equal(r.extra_applied, 1);
+  assert.equal(lists, 1);
+  assert.match(cal.events[0].description, /^추가금: 70,000원/);
 });
