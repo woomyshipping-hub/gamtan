@@ -18,10 +18,46 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);fo
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 :is(a,button,input,select,summary,textarea):focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
-/* 맨 위: 감탄 + 화면 이동 */
-.brand{display:flex;align-items:center;gap:14px}
-.brand > b{font-size:1.4rem;font-weight:800;letter-spacing:-.03em}
-.apps{display:inline-grid;grid-auto-flow:column;gap:2px;background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:3px}
-.apps a{font-weight:600;font-size:.92rem;color:var(--muted);text-decoration:none;border-radius:7px;padding:5px 14px;transition:background .15s ease-out,color .15s ease-out}
-.apps a:hover{color:var(--ink);background:var(--cell)}
-.apps a[aria-current="page"]{background:var(--ink);color:#fff}
+/* 왼쪽 사이드바 (/assets/shell.js가 만든다): 감탄 + 정산 · 장부 · 마케팅, « 로 접기 */
+:root{--side-w:208px}
+body.side-collapsed{--side-w:68px}
+body.has-side{padding-left:var(--side-w);transition:padding-left .2s ease-out}
+.side{position:fixed;inset:0 auto 0 0;width:var(--side-w);background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:18px;padding:16px 12px;z-index:30;transition:width .2s ease-out,transform .2s ease-out;overflow:hidden}
+.side svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.side-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px}
+.logo{color:var(--ink);text-decoration:none;font-size:1.4rem;font-weight:800;letter-spacing:-.03em;padding-left:8px;white-space:nowrap}
+.logo i{display:none;font-style:normal}
+.side-fold{display:grid;place-items:center;width:34px;height:34px;flex:none;border:1px solid var(--line2);background:var(--card);color:var(--muted);border-radius:8px;cursor:pointer;transition:background .15s ease-out,color .15s ease-out}
+.side-fold:hover{background:var(--cell);color:var(--ink)}
+.side-fold svg{width:16px;height:16px;transition:transform .2s ease-out}
+.side nav{display:grid;gap:4px}
+.side nav a{display:flex;align-items:center;gap:12px;height:42px;padding:0 12px;border-radius:10px;color:var(--muted);text-decoration:none;font-weight:600;white-space:nowrap;transition:background .15s ease-out,color .15s ease-out}
+.side nav a:hover{background:var(--cell);color:var(--ink)}
+.side nav a[aria-current="page"]{background:var(--ink);color:#fff}
+/* 접힘: 아이콘만 */
+body.side-collapsed .side{padding-inline:10px}
+body.side-collapsed .side-top{flex-direction:column;gap:10px}
+body.side-collapsed .logo{padding-left:0}
+body.side-collapsed .logo b{display:none}
+body.side-collapsed .logo i{display:inline}
+body.side-collapsed .side-fold svg{transform:rotate(180deg)}
+body.side-collapsed .side nav a{justify-content:center;padding:0}
+body.side-collapsed .side nav a span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.side-burger,.side-shade{display:none}
+/* 휴대폰: 숨겨 두고 ☰ 로 연다 */
+@media (max-width:760px){
+  body.has-side,body.has-side.side-collapsed{padding-left:0;padding-top:52px}
+  .side{width:232px;transform:translateX(-100%);box-shadow:0 0 40px rgba(0,0,0,.18)}
+  body.side-open .side{transform:none}
+  body.side-collapsed .side{padding-inline:12px}
+  body.side-collapsed .side-top{flex-direction:row}
+  body.side-collapsed .logo b{display:inline}body.side-collapsed .logo i{display:none}
+  body.side-collapsed .side nav a{justify-content:flex-start;padding:0 12px}
+  body.side-collapsed .side nav a span{position:static;width:auto;height:auto;clip:auto}
+  .side-fold svg{transform:none!important}
+  .side-burger{display:grid;place-items:center;position:fixed;top:8px;left:12px;z-index:25;width:40px;height:40px;border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:10px;cursor:pointer}
+  .side-burger svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+  body.side-open .side-shade{display:block;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:29}
+}
+@media (prefers-reduced-motion:reduce){body.has-side,.side,.side-fold svg{transition:none}}
+.pagetitle{font-size:1.35rem;margin:0;font-weight:800;letter-spacing:-.02em}
