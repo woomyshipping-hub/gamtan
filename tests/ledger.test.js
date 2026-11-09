@@ -16,7 +16,7 @@ function fakeSupa() {
     const u = new URL(url);
     const table = u.pathname.split("/").pop();
     calls.push({ method: opt.method, table, search: u.search, headers: opt.headers });
-    const ok = (j, status = 200) => ({ ok: true, status, json: async () => j });
+    const ok = (j, status = 200) => ({ ok: true, status, json: async () => j, text: async () => JSON.stringify(j) });
     if (table === "access_keys") return ok([{ key_sha256: crypto.createHash("sha256").update(KEY).digest("hex") }]);
     if (opt.method === "GET" && table === "ledger_entries") {
       const p = u.searchParams.getAll("entry_date");
@@ -28,7 +28,7 @@ function fakeSupa() {
     }
     if (opt.method === "POST" && table === "ledger_entries") { const e = { id: crypto.randomUUID(), created_at: "t", ...JSON.parse(opt.body) }; db.entries.push(e); return ok([e], 201); }
     if (opt.method === "POST" && table === "day_workers") { const w = { id: crypto.randomUUID(), ...JSON.parse(opt.body) }; db.workers.push(w); return ok([{ id: w.id }], 201); }
-    if (opt.method === "DELETE") { const id = u.searchParams.get("id").slice(3); db.entries = db.entries.filter((e) => e.id !== id); return { ok: true, status: 204 }; }
+    if (opt.method === "DELETE") { const id = u.searchParams.get("id").slice(3); db.entries = db.entries.filter((e) => e.id !== id); return { ok: true, status: 204, text: async () => "" }; }
     throw new Error("unexpected " + opt.method + " " + url);
   };
   return { db, calls, fetchImpl };
@@ -99,4 +99,73 @@ test("normRrn", () => {
   assert.equal(normRrn("900101 1234567"), "900101-1234567");
   assert.equal(normRrn("90010-11234567"), "900101-1234567");
   assert.equal(normRrn("12345"), null);
+});
+
+// ---- 가계부 시트 가져오기 ----
+const { parseRows, plan, parseDate, parseAmount } = require("../netlify/lib/sheet-import");
+const SHEET_ROWS = [
+  ["2026년  10월 1일", "₩2,000", "씨유광안세종점", "변동비_개인_식비", "", "2026년  10월 3일", "₩365,000", "입주청소", "홈크린마스터"],
+  ["", "₩150,150", "한맥기업", "변동비_업무_소모품", "", "2026년  10월 5일", "₩230,000", "입주청소", "홈크린마스터"],
+  ["2026년  10월 4일", "₩55,000", "SK주유소", "변동비_업무_차량", "", "", "₩230,000", "입주청소", "홈크린마스터"],
+  ["", "₩55,000", "SK주유소", "변동비_업무_차량", "", "2026년  10월 9일", "₩355,800", "KB손보", "실비 청구"],
+  ["2026년  9월 30일", "₩9,000", "이월", "변동비_업무_차량"],
+  [],
+];
+const MAP = { expense: { "변동비_업무_소모품": "세제", "변동비_업무_차량": "차량" }, income: { "홈크린마스터": "매출" } };
+
+test("가계부 파싱: 빈 날짜는 윗줄, 금액 ₩ 제거, 다른 달 제외", () => {
+  assert.equal(parseDate("2026년  10월 1일"), "2026-10-01");
+  assert.equal(parseAmount("₩150,150"), 150150);
+  const items = parseRows(SHEET_ROWS, "2026-10");
+  assert.equal(items.length, 8);
+  assert.equal(items.find((i) => i.desc === "한맥기업").date, "2026-10-01");
+  assert.equal(items.filter((i) => i.side === "income" && i.amount === 230000).map((i) => i.date).join(), "2026-10-05,2026-10-05");
+});
+
+test("가계부 계획: 매핑된 카테고리만, 같은 줄 두 번은 다른 키, 개인 지출 제외", () => {
+  const { entries, categories } = plan(SHEET_ROWS, "2026-10", MAP);
+  assert.equal(entries.length, 6); // 소모품 1 + 차량 2 + 홈크린마스터 3
+  assert.equal(new Set(entries.map((e) => e.import_key)).size, 6);
+  assert.ok(!entries.some((e) => /씨유|KB손보/.test(e.memo)));
+  const food = categories.find((c) => c.category === "변동비_개인_식비");
+  assert.equal(food.mapped_to, null);
+  assert.equal(entries.find((e) => e.memo.startsWith("한맥기업")).category, "세제");
+});
+
+test("가져오기 API: 미리보기는 저장 안 함, 적용은 새 줄만, 두 번 적용해도 중복 없음", async () => {
+  const s = fakeSupa();
+  const settings = [{ key: "ledger_sheet_id", value: "SHEET" }, { key: "ledger_sheet_map", value: JSON.stringify(MAP) }];
+  const base = s.fetchImpl;
+  const fetchImpl = async (url, opt = {}) => {
+    if (url.startsWith("https://oauth2.googleapis.com/")) return { ok: true, json: async () => ({ access_token: "AT" }) };
+    if (url.startsWith("https://sheets.googleapis.com/")) {
+      assert.match(decodeURIComponent(url), /'2026년 10월 상세'!B5:J/);
+      return { ok: true, json: async () => ({ values: SHEET_ROWS }) };
+    }
+    const u = new URL(url);
+    if (u.pathname.endsWith("/app_settings")) return { ok: true, status: 200, text: async () => JSON.stringify(settings) };
+    if (u.pathname.endsWith("/ledger_entries") && opt.method === "GET" && u.searchParams.get("source")) {
+      return { ok: true, status: 200, text: async () => JSON.stringify(s.db.entries.filter((e) => e.source === "sheet").map((e) => ({ import_key: e.import_key }))) };
+    }
+    if (u.pathname.endsWith("/ledger_entries") && opt.method === "POST" && u.searchParams.get("on_conflict")) {
+      for (const e of JSON.parse(opt.body)) if (!s.db.entries.some((x) => x.import_key === e.import_key)) s.db.entries.push({ id: crypto.randomUUID(), ...e });
+      return { ok: true, status: 201, text: async () => "" };
+    }
+    return base(url, opt);
+  };
+  const { privateKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 1024 });
+  const env = { ...ENV, GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: "sa@x", private_key: privateKey.export({ type: "pkcs8", format: "pem" }) }) };
+  const h = makeHandler({ env, fetchImpl });
+  const dry = J(await h(req("POST", { body: { type: "import", month: "2026-10" } })));
+  assert.equal(dry.new, 6);
+  assert.equal(dry.applied, false);
+  assert.equal(s.db.entries.length, 0);
+  const a1 = J(await h(req("POST", { body: { type: "import", month: "2026-10", apply: true } })));
+  assert.equal(a1.applied, true);
+  assert.equal(s.db.entries.length, 6);
+  assert.equal(a1.new_sum, 365000 + 230000 * 2 - 150150 - 55000 * 2);
+  const a2 = J(await h(req("POST", { body: { type: "import", month: "2026-10", apply: true } })));
+  assert.equal(a2.new, 0);
+  assert.equal(a2.already, 6);
+  assert.equal(s.db.entries.length, 6);
 });

@@ -3,14 +3,16 @@
 //   GET    ?month=YYYY-MM                      → { month, entries, workers }
 //   POST   {type:"entry", entry_date, kind, category, amount, memo?, worker_id?} → { entry }
 //   POST   {type:"worker", name, phone?, rrn?} → { worker }   (주민번호는 응답·목록에서 가린 값만)
+//   POST   {type:"import", month, apply?}    → 개인 가계부 시트에서 감탄 건 가져오기 (apply 없으면 미리보기만)
 //   DELETE ?id=<entry id>                      → { ok }
 // 환경변수: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 const crypto = require("crypto");
 const { makeSupa } = require("../lib/supa");
 const { makeSheets } = require("../lib/google");
+const { plan, rangeOf, tabName } = require("../lib/sheet-import");
 
 const CATEGORIES = { income: ["매출"], expense: ["인건비", "차량", "장비", "세제", "통신비", "기타"] };
-const ENTRY_COLS = "id,entry_date,kind,category,amount,memo,worker_id,created_at";
+const ENTRY_COLS = "id,entry_date,kind,category,amount,memo,worker_id,source,created_at";
 const WORKER_COLS = "id,name,phone,rrn_masked,created_at";
 
 const reply = (statusCode, obj) => ({
@@ -33,6 +35,23 @@ function nextMonth(month) {
 function normRrn(s) {
   const d = String(s || "").replace(/\D/g, "");
   return d.length === 13 ? `${d.slice(0, 6)}-${d.slice(6)}` : null;
+}
+
+async function importMonth({ env, fetchImpl, rest, month, apply }) {
+  if (!env.GOOGLE_SERVICE_ACCOUNT_JSON) return { error: "google not configured" };
+  const settings = Object.fromEntries((await rest("app_settings?key=in.(ledger_sheet_id,ledger_sheet_map)&select=key,value")).map((r) => [r.key, r.value]));
+  if (!settings.ledger_sheet_id) return { error: "가계부 시트가 등록되지 않음" };
+  const map = settings.ledger_sheet_map ? JSON.parse(settings.ledger_sheet_map) : {};
+  let rows;
+  try { rows = await makeSheets(env, fetchImpl).values(settings.ledger_sheet_id, rangeOf(month)); } catch (e) {
+    if (e.status === 400) return { month, tab: tabName(month), missing_tab: true, categories: [], new: 0, already: 0, applied: false };
+    return { error: String(e.message).slice(0, 300) };
+  }
+  const { entries, categories } = plan(rows, month, map);
+  const existing = new Set((await rest(`ledger_entries?source=eq.sheet&entry_date=gte.${month}-01&entry_date=lt.${nextMonth(month)}-01&select=import_key`)).map((r) => r.import_key));
+  const fresh = entries.filter((e) => !existing.has(e.import_key));
+  if (apply && fresh.length) await rest("ledger_entries?on_conflict=import_key", { method: "POST", prefer: "resolution=ignore-duplicates,return=minimal", body: fresh });
+  return { month, tab: tabName(month), categories, new: fresh.length, new_sum: fresh.reduce((a, e) => a + (e.kind === "income" ? e.amount : -e.amount), 0), already: entries.length - fresh.length, applied: apply && fresh.length > 0 };
 }
 
 function makeHandler({ env = process.env, fetchImpl = fetch } = {}) {
@@ -110,6 +129,13 @@ function makeHandler({ env = process.env, fetchImpl = fetch } = {}) {
           return reply(201, { entry });
         }
 
+        if (b.type === "import") {
+          const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(b.month || "") ? b.month : null;
+          if (!month) return reply(400, { error: "month=YYYY-MM 필요" });
+          const out = await importMonth({ env, fetchImpl, rest, month, apply: b.apply === true });
+          return reply(out.error ? 502 : 200, out);
+        }
+
         if (b.type === "worker") {
           const name = text(b.name, 40);
           if (!name) return reply(400, { error: "이름 필요" });
@@ -131,3 +157,4 @@ function makeHandler({ env = process.env, fetchImpl = fetch } = {}) {
 exports.handler = makeHandler();
 exports.makeHandler = makeHandler;
 exports.normRrn = normRrn;
+exports.importMonth = importMonth;
