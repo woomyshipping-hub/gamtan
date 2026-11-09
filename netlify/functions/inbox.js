@@ -10,6 +10,7 @@ const crypto = require("crypto");
 const { extract } = require("../lib/extract");
 const { makeCalendar, ampmOf, withExtra } = require("../lib/gcal");
 const { supaHeaders } = require("../lib/supa");
+const { extraOf } = require("../../api/events.js").helpers; // 정산 페이지와 같은 "추가금: N원" 해석
 
 const MAX_MESSAGES = 5; // 함수 제한시간(10초) 안에 끝내기 위해 한 번에 5건까지
 const BUDGET_MS = 8000; // 이 시간이 지나면 남은 메시지는 state=new로 두고 다음 호출에서 이어서 처리
@@ -133,6 +134,8 @@ async function applyExtra(cal, p) {
   const events = await cal.ownEventsOn(p.work_date);
   const hits = p.ampm ? events.filter((e) => ampmOf(e) === p.ampm) : events;
   if (hits.length !== 1) return { state: "unmatched", error: `해당 일정 ${hits.length}건 (${p.work_date} ${p.ampm || "시간대 없음"})` };
+  // "추가 없습니다"(0원)는 미리 확정된 추가금(예: 팀장님 "추가3만원 확정")을 지우지 않는다
+  if (p.extra_amount === 0 && extraOf(hits[0].description) > 0) return { state: "extra_applied", gcal_event_id: hits[0].id, error: "기존 추가금 유지 (0원 보고)" };
   await cal.patchDescription(hits[0].id, withExtra(hits[0].description, p.extra_amount, p.notes));
   return { state: "extra_applied", gcal_event_id: hits[0].id };
 }
