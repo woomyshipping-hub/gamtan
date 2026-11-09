@@ -7,6 +7,7 @@
 <meta name="referrer" content="no-referrer">
 <title>감탄 장부</title>
 <link rel="stylesheet" href="/assets/theme.css">
+<script src="/assets/shell.js" defer></script>
 <style>
 /* PC에서 몰아서 입력: 입력줄 → 월 표 → 일용직. 휴대폰에서는 한 줄씩 쌓인다. */
 /* 색·글꼴·기본 규칙은 /assets/theme.css. 장부 전용: 수입은 진한 호박색, 지출은 검정 */
@@ -104,7 +105,7 @@ form.wadd{display:grid;grid-template-columns:minmax(100px,1fr) minmax(130px,1fr)
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><h1 class="vh">감탄 장부</h1><b aria-hidden="true">감탄</b><nav class="apps" aria-label="화면"><a href="/">정산</a><a href="/ledger/" aria-current="page">장부</a><a href="/marketing/">마케팅</a></nav></div>
+    <h1 class="pagetitle">장부</h1>
     <div class="nav">
       <button class="ibtn" id="prev" type="button" aria-label="이전 달"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
       <strong id="mlabel" class="num" aria-live="polite"></strong>
