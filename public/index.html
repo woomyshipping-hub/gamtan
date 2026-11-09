@@ -7,8 +7,9 @@
 :root{
   --bg:#f3f1ec; --card:#ffffff; --cell:#f6f4ef; --ink:#17191c; --muted:#5d636a; --line:#e3dfd6; --line2:#cfc9bd;
   --amber:#e8930c; --amber-ink:#4a2f00; --amber-soft:#ffe9bf; --amber-tint:#fff6e3;
-  --crin:#d9a400; --crin-soft:#fbf0cc; --own:#2f8f5b; --own-soft:#dcefe3;
-  --accent:#24524a; --warn:#b4541b; --warn-soft:#fbe7da;
+  /* 색은 회색 계열 + 호박색 하나. 크린토피아 = 호박색, 홈클린마스터 = 진한 회색 */
+  --crin:#e8930c; --crin-soft:#fff1d9; --own:#3d4148; --own-soft:#eeece6;
+  --accent:#8a5300; --warn:#b4541b; --warn-soft:#fbe7da;
   --f-body:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
   color-scheme:light;
 }
@@ -79,8 +80,6 @@ table.score{width:100%;border-collapse:separate;border-spacing:5px;min-width:760
 .wdh b{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
 .wdh span{font-size:.85rem;color:var(--muted);font-weight:600}
 .wd.today .wdh b{color:var(--amber-ink)}
-.wd.sun .wdh span{color:#b8372a}
-.wd.sat .wdh span{color:#2f5fb3}
 .slot{padding:8px 8px 6px;display:grid;gap:6px;align-content:start}
 .slot + .slot{border-top:1px dashed var(--line2)}
 .slot > i{font-style:normal;font-size:.72rem;color:var(--muted);font-weight:600}
@@ -97,7 +96,7 @@ table.score{width:100%;border-collapse:separate;border-spacing:5px;min-width:760
 .dow{padding:8px 0;text-align:center;font-size:.8rem;font-weight:600;color:var(--muted);background:var(--cell);border-bottom:1px solid var(--line)}
 .day{min-width:0;min-height:128px;display:flex;flex-direction:column;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card)}
 .day:nth-child(7n){border-right:0}
-.day.selw{background:var(--amber-tint)}
+.day.selw{background:#f8f6f1}
 .day.pre{opacity:.4}
 .dn{font:inherit;font-size:.95rem;font-weight:700;background:none;border:0;color:var(--ink);text-align:left;padding:6px 8px 2px;cursor:pointer;min-height:30px}
 .dn:hover{color:var(--amber-ink)}
