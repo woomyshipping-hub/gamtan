@@ -76,6 +76,11 @@ input[aria-invalid="true"]{border-color:var(--warn)}
 .pbtn:hover{opacity:.9}
 .pbtn:disabled{opacity:.5;cursor:default}
 .formnote{font-size:.78rem;color:var(--muted);margin:0}
+.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.sbtn{font:inherit;font-size:.85rem;height:32px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:0 12px;cursor:pointer;transition:background .15s ease-out}
+.sbtn:hover{background:var(--sel)}
+.sbtn:disabled{opacity:.5;cursor:default}
+.src{display:inline-block;margin-left:6px;font-size:.72rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 7px;vertical-align:1px}
 
 /* 월 표 */
 .tablewrap{overflow-x:auto;margin-inline:-16px;padding-inline:16px}
@@ -142,7 +147,7 @@ form.wadd{display:grid;grid-template-columns:minmax(100px,1fr) minmax(130px,1fr)
       </section>
 
       <section class="panel" aria-labelledby="addh">
-        <div class="phead"><h2 id="addh">기록 추가</h2><span class="sm">Enter로 바로 추가 · 날짜와 분류는 다음 줄에도 유지</span></div>
+        <div class="phead"><h2 id="addh">기록 추가</h2><span class="sm">Enter로 바로 추가 · 개인 가계부의 '업무' 지출과 홈크린마스터 수입은 매일 아침 자동으로 들어옵니다</span></div>
         <form class="add noworker" id="addForm" autocomplete="off" novalidate>
           <label class="fld"><span>날짜</span><input type="date" id="fDate" required></label>
           <div class="fld"><span id="kindLab">구분</span>
@@ -161,7 +166,9 @@ form.wadd{display:grid;grid-template-columns:minmax(100px,1fr) minmax(130px,1fr)
       </section>
 
       <section class="panel" aria-labelledby="listh">
-        <div class="phead"><h2 id="listh">기록</h2><span class="status" id="status" role="status"></span></div>
+        <div class="phead"><h2 id="listh">기록</h2>
+          <div class="tools"><span class="status" id="status" role="status"></span><button class="sbtn" id="syncBtn" type="button">가계부 가져오기</button></div>
+        </div>
         <div class="tablewrap">
           <table class="num">
             <thead><tr><th>날짜</th><th>분류</th><th>내용</th><th class="r">수입</th><th class="r">지출</th><th><span class="vh" hidden>삭제</span></th></tr></thead>
@@ -277,7 +284,7 @@ form.wadd{display:grid;grid-template-columns:minmax(100px,1fr) minmax(130px,1fr)
       <tr data-id="${e.id}"${e.id === state.fresh ? ' class="fresh"' : ""}>
         <td class="d">${e.entry_date.slice(5).replace("-", "/")}</td>
         <td class="nw">${e.category}</td>
-        <td class="memo">${esc(e.memo || "")}${e.worker_id ? `<span class="w">일용직 ${esc(wname[e.worker_id] || "")}</span>` : ""}</td>
+        <td class="memo">${esc((e.memo || "").replace(/ \(가계부\)$/, ""))}${e.source === "sheet" ? '<span class="src">가계부</span>' : ""}${e.worker_id ? `<span class="w">일용직 ${esc(wname[e.worker_id] || "")}</span>` : ""}</td>
         <td class="r in">${e.kind === "income" ? won(e.amount) : ""}</td>
         <td class="r out">${e.kind === "expense" ? won(e.amount) : ""}</td>
         <td class="r"><button class="del" type="button" data-del="${e.id}" aria-label="${e.entry_date} ${e.category} ${won(e.amount)} 삭제">삭제</button></td>
@@ -359,6 +366,18 @@ form.wadd{display:grid;grid-template-columns:minmax(100px,1fr) minmax(130px,1fr)
       state.entries = state.entries.filter((e) => e.id !== b.dataset.del);
       render(); setStatus("삭제됨");
     } catch (e) { b.disabled = false; if (e.message !== "unauthorized") setStatus("삭제하지 못했습니다: " + e.message, true); }
+  };
+
+  // 개인 가계부 시트에서 이번 달 감탄 건 가져오기 (매일 06시에도 자동으로 실행됨)
+  $("syncBtn").onclick = async () => {
+    const btn = $("syncBtn"); btn.disabled = true; btn.textContent = "가져오는 중";
+    try {
+      const r = await api("POST", "", { type: "import", month: state.month, apply: true });
+      if (r.before_start) setStatus(`가계부 가져오기는 ${r.before_start.replace("-", "년 ")}월부터입니다`);
+      else if (r.missing_tab) setStatus(`가계부에 '${r.tab}' 탭이 아직 없습니다`);
+      else { setStatus(r.new ? `가계부에서 ${r.new}건 가져옴` : "가계부에서 새로 가져올 건이 없습니다"); if (r.new) await load(); }
+    } catch (e) { if (e.message !== "unauthorized") setStatus("가계부를 읽지 못했습니다: " + e.message, true); }
+    finally { btn.disabled = false; btn.textContent = "가계부 가져오기"; }
   };
 
   $("wForm").onsubmit = async (ev) => {

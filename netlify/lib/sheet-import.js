@@ -4,8 +4,12 @@
 //   G 날짜 | H 금액 | I 설명 | J 카테고리   ← 수입
 //   날짜가 빈 줄은 같은 쪽 윗줄 날짜를 따른다. 금액은 "₩150,150" 형식.
 // 어떤 카테고리를 감탄 장부의 어느 분류로 옮길지는 app_settings.ledger_sheet_map(JSON)이 정한다.
-//   { "expense": { "변동비_업무_소모품": "세제" }, "income": { "홈크린마스터": "매출" } }
-// 매핑에 없는 카테고리는 가져오지 않는다 (개인 지출이 섞이지 않게).
+//   { "from_month": "2026-11",
+//     "expense_keyword": "업무",                       ← 지출: 카테고리에 이 글자가 있으면 감탄 건 (대표 결정 2026-11-09)
+//     "expense_suffix": { "주유비": "차량", "소모품": "세제" },  ← 마지막 "_" 뒤 이름 → 장부 분류 (없으면 "기타")
+//     "expense": { "카테고리 전체 이름": "분류" },      ← 개별 지정 (키워드보다 우선)
+//     "income": { "홈크린마스터": "매출" } }
+// 해당하지 않는 카테고리는 가져오지 않는다 (개인 지출이 섞이지 않게).
 const crypto = require("crypto");
 
 const RANGE_FROM_ROW = 5;
@@ -53,12 +57,22 @@ function withKeys(items, month) {
   });
 }
 
+function mapCategory(side, category, map) {
+  const direct = (map[side] || {})[category];
+  if (direct) return direct;
+  if (side === "expense" && map.expense_keyword && category.includes(map.expense_keyword)) {
+    const suffix = category.split("_").pop();
+    return (map.expense_suffix || {})[suffix] || "기타";
+  }
+  return null;
+}
+
 function plan(rows, month, map) {
   const items = withKeys(parseRows(rows, month), month);
   const cats = new Map();
   const entries = [];
   for (const it of items) {
-    const mapped = (map[it.side] || {})[it.category] || null;
+    const mapped = mapCategory(it.side, it.category, map);
     const k = it.side + "|" + it.category;
     const c = cats.get(k) || { side: it.side, category: it.category, count: 0, sum: 0, mapped_to: mapped };
     c.count++; c.sum += it.amount; cats.set(k, c);
@@ -68,4 +82,4 @@ function plan(rows, month, map) {
   return { entries, categories };
 }
 
-module.exports = { tabName, rangeOf, parseDate, parseAmount, parseRows, plan };
+module.exports = { tabName, rangeOf, parseDate, parseAmount, parseRows, plan, mapCategory };
