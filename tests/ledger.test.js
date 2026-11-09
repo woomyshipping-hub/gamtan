@@ -20,7 +20,7 @@ function fakeSupa() {
     if (table === "access_keys") return ok([{ key_sha256: crypto.createHash("sha256").update(KEY).digest("hex") }]);
     if (opt.method === "GET" && table === "ledger_entries") {
       const p = u.searchParams.getAll("entry_date");
-      return ok(db.entries.filter((e) => e.entry_date >= p[0].replace("gte.", "") && e.entry_date < p[1].replace("lt.", "")));
+      return ok(db.entries.filter((e) => !e.deleted_at && e.entry_date >= p[0].replace("gte.", "") && e.entry_date < p[1].replace("lt.", "")));
     }
     if (opt.method === "GET" && table === "day_workers_masked") {
       const id = u.searchParams.get("id");
@@ -28,7 +28,8 @@ function fakeSupa() {
     }
     if (opt.method === "POST" && table === "ledger_entries") { const e = { id: crypto.randomUUID(), created_at: "t", ...JSON.parse(opt.body) }; db.entries.push(e); return ok([e], 201); }
     if (opt.method === "POST" && table === "day_workers") { const w = { id: crypto.randomUUID(), ...JSON.parse(opt.body) }; db.workers.push(w); return ok([{ id: w.id }], 201); }
-    if (opt.method === "DELETE") { const id = u.searchParams.get("id").slice(3); db.entries = db.entries.filter((e) => e.id !== id); return { ok: true, status: 204, text: async () => "" }; }
+    if (opt.method === "PATCH") { const id = u.searchParams.get("id").slice(3), src = u.searchParams.get("source").slice(3); for (const e of db.entries) if (e.id === id && (e.source || "manual") === src) Object.assign(e, JSON.parse(opt.body)); return { ok: true, status: 204, text: async () => "" }; }
+    if (opt.method === "DELETE") { const id = u.searchParams.get("id").slice(3); const src = (u.searchParams.get("source") || "eq.manual").slice(3); db.entries = db.entries.filter((e) => !(e.id === id && (e.source || "manual") === src)); return { ok: true, status: 204, text: async () => "" }; }
     throw new Error("unexpected " + opt.method + " " + url);
   };
   return { db, calls, fetchImpl };
@@ -111,7 +112,16 @@ const SHEET_ROWS = [
   ["2026년  9월 30일", "₩9,000", "이월", "변동비_업무_차량"],
   [],
 ];
-const MAP = { expense: { "변동비_업무_소모품": "세제", "변동비_업무_차량": "차량" }, income: { "홈크린마스터": "매출" } };
+const MAP = { from_month: "2026-10", expense_keyword: "업무", expense_suffix: { "소모품": "세제", "차량": "차량", "주유비": "차량" }, income: { "홈크린마스터": "매출" } };
+const { mapCategory } = require("../netlify/lib/sheet-import");
+
+test("카테고리 규칙: 지출은 '업무' 포함만, 뒷이름으로 분류(없으면 기타), 수입은 지정한 것만", () => {
+  assert.equal(mapCategory("expense", "고정비_업무_주유비", MAP), "차량");
+  assert.equal(mapCategory("expense", "변동비_업무_광고비", MAP), "기타");
+  assert.equal(mapCategory("expense", "변동비_개인_식비", MAP), null);
+  assert.equal(mapCategory("income", "홈크린마스터", MAP), "매출");
+  assert.equal(mapCategory("income", "청소급여", MAP), null);
+});
 
 test("가계부 파싱: 빈 날짜는 윗줄, 금액 ₩ 제거, 다른 달 제외", () => {
   assert.equal(parseDate("2026년  10월 1일"), "2026-10-01");
@@ -168,4 +178,22 @@ test("가져오기 API: 미리보기는 저장 안 함, 적용은 새 줄만, �
   assert.equal(a2.new, 0);
   assert.equal(a2.already, 6);
   assert.equal(s.db.entries.length, 6);
+});
+
+test("가져오기 시작 달 이전은 건너뛰고, 가져온 줄을 지우면 숨김만(다시 안 생김)", async () => {
+  const s = fakeSupa();
+  s.db.entries.push({ id: "11111111-1111-1111-1111-111111111111", entry_date: "2026-11-02", kind: "expense", category: "차량", amount: 55000, source: "sheet", import_key: "k1" });
+  s.db.entries.push({ id: "22222222-2222-2222-2222-222222222222", entry_date: "2026-11-02", kind: "expense", category: "차량", amount: 1000, source: "manual" });
+  const h = makeHandler({ env: ENV, fetchImpl: s.fetchImpl });
+  await h(req("DELETE", { qs: { id: "11111111-1111-1111-1111-111111111111" } }));
+  await h(req("DELETE", { qs: { id: "22222222-2222-2222-2222-222222222222" } }));
+  assert.equal(s.db.entries.length, 1); // 직접 입력한 줄만 실제 삭제
+  assert.ok(s.db.entries[0].deleted_at);
+  assert.equal(J(await h(req("GET", { qs: { month: "2026-11" } }))).entries.length, 0);
+
+  const { importMonth } = require("../netlify/functions/ledger");
+  const rest = async (path) => (path.startsWith("app_settings") ? [{ key: "ledger_sheet_id", value: "S" }, { key: "ledger_sheet_map", value: JSON.stringify({ from_month: "2026-11" }) }] : []);
+  const r = await importMonth({ env: { GOOGLE_SERVICE_ACCOUNT_JSON: "{}" }, fetchImpl: null, rest, month: "2026-10", apply: true });
+  assert.equal(r.before_start, "2026-11");
+  assert.equal(r.applied, false);
 });

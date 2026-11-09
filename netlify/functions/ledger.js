@@ -42,12 +42,14 @@ async function importMonth({ env, fetchImpl, rest, month, apply }) {
   const settings = Object.fromEntries((await rest("app_settings?key=in.(ledger_sheet_id,ledger_sheet_map)&select=key,value")).map((r) => [r.key, r.value]));
   if (!settings.ledger_sheet_id) return { error: "가계부 시트가 등록되지 않음" };
   const map = settings.ledger_sheet_map ? JSON.parse(settings.ledger_sheet_map) : {};
+  if (map.from_month && month < map.from_month) return { month, tab: tabName(month), before_start: map.from_month, categories: [], new: 0, already: 0, applied: false };
   let rows;
   try { rows = await makeSheets(env, fetchImpl).values(settings.ledger_sheet_id, rangeOf(month)); } catch (e) {
     if (e.status === 400) return { month, tab: tabName(month), missing_tab: true, categories: [], new: 0, already: 0, applied: false };
     return { error: String(e.message).slice(0, 300) };
   }
   const { entries, categories } = plan(rows, month, map);
+  // 장부에서 지운 가져온 줄(deleted_at)도 포함해 비교 → 다시 가져오지 않는다
   const existing = new Set((await rest(`ledger_entries?source=eq.sheet&entry_date=gte.${month}-01&entry_date=lt.${nextMonth(month)}-01&select=import_key`)).map((r) => r.import_key));
   const fresh = entries.filter((e) => !existing.has(e.import_key));
   if (apply && fresh.length) await rest("ledger_entries?on_conflict=import_key", { method: "POST", prefer: "resolution=ignore-duplicates,return=minimal", body: fresh });
@@ -95,7 +97,7 @@ function makeHandler({ env = process.env, fetchImpl = fetch } = {}) {
         if (!month) return reply(400, { error: "month=YYYY-MM 필요" });
         const range = `entry_date=gte.${month}-01&entry_date=lt.${nextMonth(month)}-01`;
         const [entries, workers] = await Promise.all([
-          rest(`ledger_entries?${range}&select=${ENTRY_COLS}&order=entry_date.asc,created_at.asc`),
+          rest(`ledger_entries?${range}&deleted_at=is.null&select=${ENTRY_COLS}&order=entry_date.asc,created_at.asc`),
           rest(`day_workers_masked?select=${WORKER_COLS}&order=name.asc`),
         ]);
         return reply(200, { month, entries, workers });
@@ -103,7 +105,9 @@ function makeHandler({ env = process.env, fetchImpl = fetch } = {}) {
 
       if (event.httpMethod === "DELETE") {
         if (!uuid(q.id)) return reply(400, { error: "id 필요" });
-        await rest(`ledger_entries?id=eq.${q.id}`, { method: "DELETE" });
+        // 직접 입력한 줄은 지우고, 가계부에서 가져온 줄은 표시만 지운다 (다음 동기화 때 다시 생기지 않게)
+        await rest(`ledger_entries?id=eq.${q.id}&source=eq.manual`, { method: "DELETE" });
+        await rest(`ledger_entries?id=eq.${q.id}&source=eq.sheet`, { method: "PATCH", body: { deleted_at: new Date().toISOString() } });
         return reply(200, { ok: true });
       }
 

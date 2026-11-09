@@ -34,3 +34,7 @@
   for = "/*"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
+
+# 개인 가계부 → 감탄 장부 자동 가져오기: 매일 21:00 UTC = 06:00 KST
+[functions."ledger-sync"]
+  schedule = "0 21 * * *"
