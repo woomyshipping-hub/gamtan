@@ -1,0 +1,27 @@
+/* 감탄 운영 화면 공통 (정산 / 장부 / 마케팅). 블랙 & 화이트, 포인트는 회색과 호박색 하나.
+   규칙: 색은 아래 토큰만 쓴다. 호박색은 합계·오늘·선택처럼 "지금 봐야 할 것"에만. 경고(주황)는 확인이 필요할 때만. */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+:root{
+  --bg:#f7f7f7; --card:#ffffff; --cell:#f2f2f2; --ink:#111111; --muted:#6b6b6b; --line:#e6e6e6; --line2:#d1d1d1;
+  --amber:#e8930c; --amber-ink:#4a2f00; --amber-soft:#ffe9bf; --amber-tint:#fff6e3; --accent:#8a5300;
+  --crin:#e8930c; --crin-soft:#fff1d9; --own:#333333; --own-soft:#efefef;
+  --warn:#b4541b; --warn-soft:#fbe7da;
+  --f-body:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{accent-color:var(--ink);scrollbar-color:var(--line2) var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;caret-color:var(--amber)}
+::selection{background:var(--amber-soft)}
+[hidden]{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:is(a,button,input,select,summary,textarea):focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* 맨 위: 감탄 + 화면 이동 */
+.brand{display:flex;align-items:center;gap:14px}
+.brand > b{font-size:1.4rem;font-weight:800;letter-spacing:-.03em}
+.apps{display:inline-grid;grid-auto-flow:column;gap:2px;background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:3px}
+.apps a{font-weight:600;font-size:.92rem;color:var(--muted);text-decoration:none;border-radius:7px;padding:5px 14px;transition:background .15s ease-out,color .15s ease-out}
+.apps a:hover{color:var(--ink);background:var(--cell)}
+.apps a[aria-current="page"]{background:var(--ink);color:#fff}
