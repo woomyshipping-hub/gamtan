@@ -1,86 +1,136 @@
-<!doctype html><html lang="ko"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>감탄 정산</title><meta name="robots" content="noindex,nofollow"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<!doctype html><html lang="ko"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>감탄 정산</title><meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
-/* Layout: month bar → summary ledger (week figures + month figures) → month calendar (AM/PM halves per day) → job detail dialog → rates panel. Phone-first. */
+/* 전광판(라인 스코어) 정산 화면. PC 우선, 밝은 화면.
+   주간: 월~일 × (정산받을 총액·김한준님·킴) + 주 합계 / 월간: 주차 × 같은 3줄 + 월 합계.
+   전광판 칸은 끝난 일정만 더한다(기존 agg 규칙). 아래는 주간 7일 칸 / 월간 달력. */
 :root{
-  --bg:#f4f5f2; --card:#ffffff; --ink:#1d2421; --muted:#66706b; --line:#dfe3de; --sel:#e6efe9;
-  --crin:#e7b416; --crin-soft:#fbf1cf; --own:#2f8f5b; --own-soft:#dcefe3;
+  --bg:#f3f1ec; --card:#ffffff; --cell:#f6f4ef; --ink:#17191c; --muted:#5d636a; --line:#e3dfd6; --line2:#cfc9bd;
+  --amber:#e8930c; --amber-ink:#4a2f00; --amber-soft:#ffe9bf; --amber-tint:#fff6e3;
+  --crin:#d9a400; --crin-soft:#fbf0cc; --own:#2f8f5b; --own-soft:#dcefe3;
   --accent:#24524a; --warn:#b4541b; --warn-soft:#fbe7da;
-  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  --f-body:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#121614; --card:#1b211e; --ink:#e7ece9; --muted:#9aa49f; --line:#2c3430; --sel:#22302a;
-  --crin:#e9bf3a; --crin-soft:#3a3218; --own:#58b583; --own-soft:#1d3327;
-  --accent:#7cc4b5; --warn:#f0925a; --warn-soft:#3b2519; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#121614; --card:#1b211e; --ink:#e7ece9; --muted:#9aa49f; --line:#2c3430; --sel:#22302a;
-  --crin:#e9bf3a; --crin-soft:#3a3218; --own:#58b583; --own-soft:#1d3327;
-  --accent:#7cc4b5; --warn:#f0925a; --warn-soft:#3b2519; color-scheme:dark}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
-.wrap{max-width:800px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px;display:grid;gap:16px}
+html{accent-color:var(--amber);scrollbar-color:var(--line2) var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;caret-color:var(--amber)}
+::selection{background:var(--amber-soft)}
+[hidden]{display:none!important}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:max(20px,env(safe-area-inset-left,0px)) max(20px,env(safe-area-inset-right,0px));padding-block:24px 64px;display:grid;gap:16px}
 .num{font-variant-numeric:tabular-nums}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-h1{font-size:1.35rem;margin:0;font-weight:700}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+h1{font-size:1.4rem;margin:0;font-weight:800;letter-spacing:-.02em}
+.ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.seg{display:inline-grid;grid-auto-flow:column;background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
+.seg button{font:inherit;font-weight:600;border:0;background:none;color:var(--muted);border-radius:7px;padding:6px 18px;cursor:pointer;transition:background .15s ease-out,color .15s ease-out}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
 .nav{display:flex;align-items:center;gap:6px}
-.nav button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;width:36px;height:36px;cursor:pointer}
-.nav button:disabled{opacity:.4;cursor:default}
-.nav strong{min-width:112px;text-align:center}
-button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav button,.tbtn{font:inherit;border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:9px;height:38px;cursor:pointer;transition:background .15s ease-out}
+.nav button{width:38px;font-size:1.1rem}
+.nav button:hover,.tbtn:hover{background:var(--cell)}
+.nav button:disabled{opacity:.35;cursor:default}
+.nav strong{min-width:170px;text-align:center;font-size:1.05rem}
+.tbtn{padding:0 14px;font-size:.9rem}
+:is(button,input,select,summary):focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .status{font-size:.82rem;color:var(--muted)}
 .banner{border-radius:12px;padding:12px 14px;background:var(--warn-soft);color:var(--ink);font-size:.9rem}
-.ledger{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:16px}
-.grp{display:grid;gap:12px}
-.grp + .grp{border-top:1px solid var(--line);padding-top:14px}
-.ghead{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
-.ghead .sm{font-size:.82rem;color:var(--muted)}
-.ghead .sm b{color:var(--ink)}
-.figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
-.fig{display:grid;gap:2px;min-width:0}
-.fig.wide{grid-column:1/-1}
-.lab{font-size:.78rem;color:var(--muted);letter-spacing:.02em}
-.val{font-size:1.3rem;font-weight:700}
-.sub{font-size:.78rem;color:var(--muted)}
-.mine .val{color:var(--accent)}
-.pending{display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+
+/* 전광판 */
+.board{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px 16px;display:grid;gap:12px;box-shadow:0 1px 2px rgba(23,25,28,.04),0 6px 20px rgba(23,25,28,.04)}
+.bhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px 16px;flex-wrap:wrap}
+.bhead strong{font-size:1.1rem}
+.sm{font-size:.85rem;color:var(--muted)}
+.sm b{color:var(--amber-ink);background:var(--amber-soft);border-radius:6px;padding:1px 7px;font-weight:700}
+.bwrap{overflow-x:auto}
+table.score{width:100%;border-collapse:separate;border-spacing:5px;min-width:760px;table-layout:fixed}
+.score col.lc{width:128px}.score col.tc{width:184px}
+.score th{font-size:.85rem;font-weight:600;color:var(--muted);padding:2px 4px 4px;text-align:center;white-space:nowrap}
+.score th span{font-weight:500}
+.score th.today{color:var(--amber-ink)}
+.score th.today span{background:var(--amber);color:#fff;border-radius:6px;padding:1px 6px;font-weight:700}
+.score th button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:2px 8px;border-radius:6px}
+.score th button span{display:block;font-size:.75rem}
+.score th button:hover{background:var(--cell);color:var(--ink)}
+.score th.tot{color:var(--amber-ink)}
+.score td{background:var(--cell);border-radius:8px;text-align:center;font-size:1.25rem;font-weight:700;padding:12px 6px;color:var(--ink);white-space:nowrap}
+.score td.z{color:#b9b4a9;font-weight:500}
+.score td small{display:block;font-size:.72rem;font-weight:500;color:var(--muted);margin-top:1px}
+.score th.l{text-align:left;font-size:.92rem;font-weight:600;color:var(--ink);padding:0 4px 0 2px}
+.score td.tot{background:var(--amber-soft);color:var(--amber-ink);font-size:1.45rem;font-weight:800;box-shadow:inset 0 0 0 1px #f1c56e}
+.score tr.mine th.l{color:var(--accent)}
+.score tr.mine td:not(.tot):not(.z){color:var(--accent)}
+.score tr.mine td.tot{background:var(--amber);color:#fff;box-shadow:none}
+.score td.cur{box-shadow:inset 0 0 0 2px var(--amber)}
+.bfoot{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px}
+.lk{font:inherit;font-size:.88rem;border:0;background:none;color:var(--accent);font-weight:600;cursor:pointer;padding:2px 0;text-decoration:underline;text-underline-offset:3px}
+.mside{display:flex;gap:6px 20px;flex-wrap:wrap;font-size:.9rem;color:var(--muted)}
+.mside b{color:var(--ink);font-size:1rem}
+.pending{display:flex;flex-wrap:wrap;gap:8px}
 .chip{font-size:.8rem;border-radius:999px;padding:3px 10px;background:var(--warn-soft);color:var(--ink)}
 
-.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
-.dow{padding:6px 0;text-align:center;font-size:.75rem;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--line)}
-.day{min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card)}
+/* 주간 7일 */
+.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.wd{background:var(--card);border:1px solid var(--line);border-radius:12px;min-height:300px;display:flex;flex-direction:column;min-width:0}
+.wd.today{border-color:var(--amber);box-shadow:inset 0 0 0 1px var(--amber)}
+.wd.out{opacity:.55}
+.wdh{display:flex;align-items:baseline;justify-content:space-between;padding:10px 12px 8px;border-bottom:1px solid var(--line)}
+.wdh b{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+.wdh span{font-size:.85rem;color:var(--muted);font-weight:600}
+.wd.today .wdh b{color:var(--amber-ink)}
+.wd.sun .wdh span{color:#b8372a}
+.wd.sat .wdh span{color:#2f5fb3}
+.slot{padding:8px 8px 6px;display:grid;gap:6px;align-content:start}
+.slot + .slot{border-top:1px dashed var(--line2)}
+.slot > i{font-style:normal;font-size:.72rem;color:var(--muted);font-weight:600}
+.wd .jb .n{font-size:.82rem;-webkit-line-clamp:3}
+.wd .jb .a{font-size:.9rem}
+.wd .jb{padding:6px 8px;border-left-width:4px;border-radius:7px}
+.wsum{margin-top:auto;padding:8px 12px 10px;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:1px 8px;font-size:.8rem;color:var(--muted)}
+.wsum b{text-align:right;color:var(--ink)}
+.wsum .m{color:var(--accent)}
+.wsum.est{opacity:.6}
+
+/* 월간 달력 */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+.dow{padding:8px 0;text-align:center;font-size:.8rem;font-weight:600;color:var(--muted);background:var(--cell);border-bottom:1px solid var(--line)}
+.day{min-width:0;min-height:128px;display:flex;flex-direction:column;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card)}
 .day:nth-child(7n){border-right:0}
-.day.selw{background:var(--sel)}
+.day.selw{background:var(--amber-tint)}
 .day.pre{opacity:.4}
-.dn{font:inherit;font-size:.72rem;background:none;border:0;color:var(--ink);text-align:left;padding:3px 4px 1px;cursor:pointer;min-height:24px}
+.dn{font:inherit;font-size:.95rem;font-weight:700;background:none;border:0;color:var(--ink);text-align:left;padding:6px 8px 2px;cursor:pointer;min-height:30px}
+.dn:hover{color:var(--amber-ink)}
 .dn:disabled{cursor:default}
-.day.out .dn{opacity:.45}
-.day.today .dn{font-weight:700;color:var(--accent);text-decoration:underline}
-.half{min-height:40px;padding:2px;display:grid;gap:2px;align-content:start}
-.half.pm{border-top:1px dashed var(--line);background:rgba(127,127,127,.07)}
-.jb{font:inherit;display:grid;text-align:left;width:100%;min-width:0;border:0;border-left:3px solid var(--crin);background:var(--crin-soft);color:var(--ink);border-radius:5px;padding:2px 3px;cursor:pointer;line-height:1.2}
+.day.out .dn{opacity:.4}
+.day.today .dn span{background:var(--amber);color:#fff;border-radius:6px;padding:0 6px}
+.half{min-height:34px;padding:3px 5px;display:grid;gap:3px;align-content:start}
+.half.pm{border-top:1px dashed var(--line)}
+.jb{font:inherit;display:grid;text-align:left;width:100%;min-width:0;border:0;border-left:3px solid var(--crin);background:var(--crin-soft);color:var(--ink);border-radius:5px;padding:3px 5px;cursor:pointer;line-height:1.25;transition:filter .15s ease-out}
+.jb:hover{filter:brightness(.97)}
 .jb.own{border-left-color:var(--own);background:var(--own-soft)}
-.jb .n{font-size:.62rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.jb .a{font-size:.66rem;font-weight:700;overflow-wrap:anywhere}
-.jb.future{opacity:.75}
+.jb .n{font-size:.72rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.jb .a{font-size:.76rem;font-weight:700;overflow-wrap:anywhere}
+.jb.future{opacity:.62}
 .jb.warn{outline:1.5px solid var(--warn)}
 .jb.warn .a{color:var(--warn)}
-.jb.cancel{text-decoration:line-through;opacity:.5}
-.legend{margin:8px 0 0}
-.dsum{display:grid;padding:2px 3px 3px;font-size:.62rem;line-height:1.25;border-top:1px solid var(--line)}
-.dsum .l{color:var(--muted);font-size:.56rem;margin-top:1px}
-.dsum .v{font-weight:700}
+.jb.cancel{text-decoration:line-through;opacity:.45}
+.dsum{display:grid;grid-template-columns:auto 1fr;gap:0 6px;padding:4px 8px 6px;font-size:.72rem;line-height:1.3;border-top:1px solid var(--line);margin-top:auto;color:var(--muted)}
+.dsum .v{font-weight:700;text-align:right;color:var(--ink)}
 .dsum .m{color:var(--accent)}
 .dsum.est{opacity:.6}
+.legend{margin:10px 2px 0;font-size:.8rem;color:var(--muted);display:flex;gap:6px 16px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 
-dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);width:min(520px,calc(100% - 32px));max-height:calc(100% - 32px);padding:16px;overflow:auto}
-dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);width:min(560px,calc(100% - 32px));max-height:calc(100% - 32px);padding:18px;overflow:auto;box-shadow:0 20px 60px rgba(23,25,28,.18)}
+dialog::backdrop{background:rgba(23,25,28,.35)}
 .xrow{display:flex;justify-content:flex-end;margin-bottom:4px}
-.xbtn{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:5px 12px;cursor:pointer}
-.job{display:grid;gap:10px}
-.job .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.xbtn{font:inherit;font-size:.85rem;border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 12px;cursor:pointer}
+.job{display:grid;gap:12px}
+.job .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .job .top > div{min-width:0}
-.job .t{font-weight:700}
-.job .meta{font-size:.8rem;color:var(--muted)}
+.job .t{font-weight:700;font-size:1.05rem}
+.job .meta{font-size:.82rem;color:var(--muted)}
 .tag{font-size:.72rem;font-weight:700;border-radius:6px;padding:1px 6px;margin-right:4px}
 .tag.crin{background:var(--crin-soft)} .tag.own{background:var(--own-soft)}
 .tag.warn{background:var(--warn-soft);color:var(--warn)}
@@ -100,51 +150,47 @@ summary{cursor:pointer;font-weight:700}
 .rates{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px 12px;align-items:center;margin-top:12px;font-size:.88rem}
 .rates input{font:inherit;width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);text-align:right}
 .rates .h{grid-column:1/-1;font-weight:700;margin-top:6px;font-size:.8rem;color:var(--muted)}
-@media (max-width:420px){.val{font-size:1.1rem}}
+.sub{font-size:.78rem;color:var(--muted)}
+@media (max-width:760px){.wk{grid-template-columns:1fr}.wd{min-height:0}.nav strong{min-width:130px}
+  table.score{min-width:0}.score col.dc,.score .c{display:none}.score col.lc{width:auto}.score col.tc{width:60%}.score td.tot{font-size:1.25rem}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
 
 <main class="wrap">
   <header>
     <h1>감탄 정산</h1>
-    <div class="nav">
-      <button type="button" id="mprev" aria-label="이전 달">‹</button>
-      <strong id="mlabel" class="num"></strong>
-      <button type="button" id="mnext" aria-label="다음 달">›</button>
+    <div class="ctrl">
+      <div class="seg" role="group" aria-label="보기">
+        <button type="button" id="vWeek" aria-pressed="true">주간</button>
+        <button type="button" id="vMonth" aria-pressed="false">월간</button>
+      </div>
+      <div class="nav">
+        <button type="button" id="pprev" aria-label="이전">‹</button>
+        <strong id="plabel" class="num" aria-live="polite"></strong>
+        <button type="button" id="pnext" aria-label="다음">›</button>
+      </div>
+      <button type="button" class="tbtn" id="ptoday">이번 주</button>
     </div>
   </header>
   <div class="status" id="status">구글 캘린더에서 작업 일정을 불러오는 중입니다.</div>
   <div class="banner" id="banner" hidden></div>
 
-  <section class="ledger" aria-label="정산 요약">
-    <div class="grp">
-      <div class="ghead">
-        <div class="nav">
-          <button type="button" id="wprev" aria-label="이전 주">‹</button>
-          <strong id="wlabel" class="num"></strong>
-          <button type="button" id="wnext" aria-label="다음 주">›</button>
-        </div>
-        <span class="sm num" id="payday"></span>
-      </div>
-      <div class="figs">
-        <div class="fig"><span class="lab">정산받을 총액</span><span class="val num" id="sRecv">–</span><span class="sub num" id="sRecvSub"></span></div>
-        <div class="fig"><span class="lab">김한준님 지급액</span><span class="val num" id="sHan">–</span></div>
-        <div class="fig mine wide"><span class="lab">킴</span><span class="val num" id="sMine">–</span><span class="sub num" id="sCount"></span></div>
-      </div>
+  <section class="board" aria-labelledby="btitle">
+    <div class="bhead">
+      <div><strong id="btitle"></strong> <span class="sm num" id="bsub"></span></div>
+      <span class="sm num" id="payday"></span>
     </div>
-    <div class="grp">
-      <div class="ghead"><strong id="mtitle"></strong><span class="sm" id="mnote"></span></div>
-      <div class="figs">
-        <div class="fig"><span class="lab" id="mRecvLab">킴 정산액</span><span class="val num" id="mRecv">–</span></div>
-        <div class="fig"><span class="lab" id="mHanLab">김한준님 지급액</span><span class="val num" id="mHan">–</span></div>
-      </div>
+    <div class="bwrap"><table class="score num" id="score"></table></div>
+    <div class="bfoot">
+      <div class="mside num" id="mside"></div>
+      <button type="button" class="lk" id="swap"></button>
     </div>
     <div class="pending" id="pending" hidden></div>
   </section>
 
-  <section aria-label="월간 달력">
-    <div class="cal" id="cal"></div>
-    <p class="status legend">날짜 칸의 위쪽은 오전, 아래쪽은 오후입니다. 노랑은 크린토피아, 초록은 홈클린마스터입니다. 일정 카드의 금액은 정산액+추가금(+주차비) 순서입니다. 날짜 칸 맨 아래 숫자는 그날의 킴과 김한준님 정산액이고, 흐리면 아직 끝나지 않은 일정이 포함된 금액입니다. 일정을 누르면 추가금 입력과 계산 내역이 열리고, 날짜를 누르면 그 주 요약으로 바뀝니다.</p>
+  <section aria-label="달력">
+    <div id="cal"></div>
+    <p class="legend"><span><i style="background:var(--crin)"></i>크린토피아</span><span><i style="background:var(--own)"></i>홈클린마스터</span><span>흐린 카드·금액은 아직 끝나지 않은 일정</span><span>전광판 칸은 끝난 일정만 더합니다</span><span>일정을 누르면 추가금 입력과 계산 내역</span></p>
   </section>
 
   <details id="ratesBox">
@@ -269,51 +315,124 @@ summary{cursor:pointer;font-weight:700}
     return t;
   }
 
+  // 전광판 세 줄 (문구는 정산 규칙 문서 handoff.json과 같다)
+  const ROWS=[["recv","정산받을 총액"],["han","김한준님 지급액"],["mine","킴 정산액"]];
+  let mode="week";
+  const DOW="월화수목금토일";
+  const live=x=>!x.j.cancel&&!x.st.exclude;
+  const sumOf=list=>{const t={recv:0,han:0,mine:0};for(const x of list){t.recv+=x.c.recv;t.han+=x.c.han;t.mine+=x.c.mine;}return t;};
+
   function render(){
     const gs=gridStart(), ge=gridEnd(), sun=addDays(week,6), pay=addDays(week,10);
-    $("mlabel").textContent=`${view.y}년 ${view.m+1}월`;
-    $("mprev").disabled=monthIdx(view.y,view.m)<=monthIdx(FIRST_DAY.getFullYear(),FIRST_DAY.getMonth());
-    $("wlabel").textContent=`${md(week)}(월)–${md(sun)}(일)`;
-    $("payday").innerHTML=`정산일 <b>${md(pay)}(목)</b>`;
-    $("wprev").disabled=+week<=+FIRST_WEEK;
-
     const lo=ymd(gs), hi=ymd(ge), fw=ymd(FIRST_DAY);
     jobsAll=events.map(parse).filter(Boolean).filter(j=>j.date>=lo&&j.date<=hi&&j.date>=fw)
       .map(j=>{const st=jobsState[j.id]||{};return {j,st,c:calc(j,st)};})
       .sort((a,b)=>a.j.t.localeCompare(b.j.t));
 
-    const wlo=ymd(week), whi=ymd(sun), mkey=`${view.y}-${pad(view.m+1)}`;
-    const wk=agg(jobsAll.filter(x=>x.j.date>=wlo&&x.j.date<=whi));
+    const mkey=`${view.y}-${pad(view.m+1)}`;
     const monthJobs=jobsAll.filter(x=>x.j.date.slice(0,7)===mkey);
     const mo=agg(monthJobs);
-    $("sRecv").textContent=won(wk.recv);
-    $("sRecvSub").textContent=`크린토피아 ${won(wk.crin)} · 홈클린마스터 ${won(wk.own)}`;
-    $("sHan").textContent=won(wk.han);
-    $("sMine").textContent=won(wk.mine);
-    $("sCount").textContent=`완료 ${wk.done}건 기준`;
-
     const isCur=view.y===today.getFullYear()&&view.m===today.getMonth();
     const mname=isCur?"이번 달":`${view.m+1}월`;
-    $("mtitle").textContent=mname;
-    $("mnote").textContent=`완료 ${mo.done}건 기준`;
-    $("mRecvLab").textContent=`${mname} 킴 정산액 (정산총액 − 김한준님 지급액)`;
-    $("mRecv").textContent=won(mo.mine);
-    $("mHanLab").textContent=`${mname} 김한준님 지급액`;
-    $("mHan").textContent=won(mo.han);
 
-    const live=monthJobs.filter(x=>!x.j.cancel&&!x.st.exclude);
-    const big=live.filter(isBig).length, warn=live.filter(x=>x.c.warn&&!isBig(x)).length;
+    $("vWeek").setAttribute("aria-pressed",String(mode==="week"));
+    $("vMonth").setAttribute("aria-pressed",String(mode==="month"));
+    if(mode==="week"){
+      $("plabel").textContent=`${md(week)}(월) – ${md(sun)}(일)`;
+      $("pprev").disabled=+week<=+FIRST_WEEK;
+      $("pprev").setAttribute("aria-label","이전 주"); $("pnext").setAttribute("aria-label","다음 주");
+      $("ptoday").textContent="이번 주";
+      const wlo=ymd(week), whi=ymd(sun);
+      const wkJobs=jobsAll.filter(x=>x.j.date>=wlo&&x.j.date<=whi);
+      const wk=agg(wkJobs);
+      $("btitle").textContent=+week===+mondayOf(today)?"이번 주":`${md(week)} 주`;
+      $("bsub").textContent=`크린토피아 ${won(wk.crin)} · 홈클린마스터 ${won(wk.own)} · 완료 ${wk.done}건 기준`;
+      $("payday").innerHTML=`정산일 <b>${md(pay)}(목)</b>`;
+      const cols=[...Array(7)].map((_,i)=>{const d=addDays(week,i),k=ymd(d);const day=wkJobs.filter(x=>x.j.date===k&&live(x));
+        return {head:`${DOW[i]} <span>${d.getDate()===1?`${d.getMonth()+1}/1`:d.getDate()}</span>`,today:k===ymd(today),done:sumOf(day.filter(x=>x.j.done)),est:sumOf(day.filter(x=>!x.j.done)),n:day.length};});
+      renderScore(cols,wk,"주 합계");
+      $("mside").innerHTML=`<span>${mname} 킴 정산액 <b>${won(mo.mine)}</b></span><span>${mname} 김한준님 지급액 <b>${won(mo.han)}</b></span><span>완료 ${mo.done}건 기준</span>`;
+      $("swap").textContent=`${view.m+1}월 전체 보기 →`;
+      renderWeek(fw);
+    } else {
+      $("plabel").textContent=`${view.y}년 ${view.m+1}월`;
+      $("pprev").disabled=monthIdx(view.y,view.m)<=monthIdx(FIRST_DAY.getFullYear(),FIRST_DAY.getMonth());
+      $("pprev").setAttribute("aria-label","이전 달"); $("pnext").setAttribute("aria-label","다음 달");
+      $("ptoday").textContent="이번 달";
+      $("btitle").textContent=mname;
+      $("bsub").textContent=`크린토피아 ${won(mo.crin)} · 홈클린마스터 ${won(mo.own)} · 완료 ${mo.done}건 기준`;
+      $("payday").textContent="주차를 누르면 그 주를 봅니다";
+      const first=new Date(view.y,view.m,1), last=new Date(view.y,view.m+1,0);
+      const cols=[];
+      let n=0;
+      for(let m=gridStart(); m<=lastMon(); m=addDays(m,7)){
+        if(addDays(m,6)<FIRST_DAY) continue;
+        n++;
+        const a=m<first?first:m, b=addDays(m,6)>last?last:addDays(m,6);
+        const lo2=ymd(a<FIRST_DAY?FIRST_DAY:a), hi2=ymd(b);
+        const list=monthJobs.filter(x=>x.j.date>=lo2&&x.j.date<=hi2&&live(x));
+        cols.push({head:`<button type="button" data-week="${ymd(m)}" aria-label="${n}주차 ${md(a)}부터 ${md(b)}까지 주간 보기">${n}주<span>${md(a)}–${md(b)}</span></button>`,today:+m===+mondayOf(today),cur:+m===+week,done:sumOf(list.filter(x=>x.j.done)),est:sumOf(list.filter(x=>!x.j.done)),n:list.length});
+      }
+      renderScore(cols,mo,`${mname} 합계`);
+      $("mside").innerHTML=`<span>킴 정산액 = 정산받을 총액 − 김한준님 지급액</span>`;
+      $("swap").textContent=`${md(week)} 주 보기 →`;
+      renderCal(gs,ge,fw);
+    }
+
+    const lv=monthJobs.filter(live);
+    const big=lv.filter(isBig).length, warn=lv.filter(x=>x.c.warn&&!isBig(x)).length;
     const p=$("pending"); p.textContent=""; p.hidden=!(big||warn);
     const chip=txt=>{const s=document.createElement("span");s.className="chip";s.textContent=txt;p.appendChild(s);};
     if(big) chip(`${R.ownLargeMaxPy+1}평 이상 ${big}건 · 4인 작업 확인`);
     if(warn) chip(`확인 필요 ${warn}건`);
-
-    renderCal(gs,ge,fw);
     refreshDlg();
   }
 
+  // 라인 스코어: 열(요일 또는 주차) × 세 줄 + 합계. 칸은 끝난 일정만, 아직 안 끝난 금액은 작게 "예정"으로.
+  function renderScore(cols,tot,totLabel){
+    let h=`<colgroup><col class="lc">${cols.map(()=>'<col class="dc">').join("")}<col class="tc"></colgroup><thead><tr><th scope="col"></th>`;
+    for(const c of cols) h+=`<th scope="col" class="c${c.today?" today":""}">${c.head}</th>`;
+    h+=`<th scope="col" class="tot">${totLabel}</th></tr></thead><tbody>`;
+    for(const [k,label] of ROWS){
+      h+=`<tr class="${k}"><th scope="row" class="l">${label}</th>`;
+      for(const c of cols){
+        const v=c.done[k], e=c.est[k];
+        if(!c.n) h+=`<td class="c z${c.cur?" cur":""}">–</td>`;
+        else h+=`<td class="c${c.cur?" cur":""}">${v?man(v):(e?"–":"0")}${e?`<small>예정 ${man(e)}</small>`:""}</td>`;
+      }
+      h+=`<td class="tot">${won(tot[k])}</td></tr>`;
+    }
+    $("score").innerHTML=h+"</tbody>";
+  }
+
+  // 주간: 7일 칸, 오전/오후
+  function renderWeek(fw){
+    const cal=$("cal"); cal.textContent=""; cal.className="wk";
+    for(let i=0;i<7;i++){
+      const d=addDays(week,i), key=ymd(d);
+      const col=document.createElement("div");
+      col.className="wd"+(key===ymd(today)?" today":"")+(i===5?" sat":"")+(i===6?" sun":"")+(key<fw?" out":"");
+      col.innerHTML=`<div class="wdh num"><b>${d.getMonth()+1}/${d.getDate()}</b><span>${DOW[i]}요일</span></div>`;
+      for(const half of ["오전","오후"]){
+        const s=document.createElement("div"); s.className="slot"; s.setAttribute("role","group"); s.setAttribute("aria-label",half);
+        const lab=document.createElement("i"); lab.textContent=half; s.appendChild(lab);
+        for(const x of jobsAll.filter(v=>v.j.date===key&&v.j.ampm===half)) s.appendChild(jobChip(x,d));
+        col.appendChild(s);
+      }
+      const day=jobsAll.filter(x=>x.j.date===key&&live(x));
+      if(day.length){
+        const t=sumOf(day), f=document.createElement("div");
+        f.className="wsum num"+(day.every(x=>x.j.done)?"":" est");
+        f.innerHTML=`<span class="m">킴</span><b class="m">${won(t.mine)}</b><span>김한준님</span><b>${won(t.han)}</b>`;
+        col.appendChild(f);
+      }
+      cal.appendChild(col);
+    }
+  }
+
+  // 월간: 달력. 날짜를 누르면 그 주의 주간 보기로.
   function renderCal(gs,ge,fw){
-    const cal=$("cal"); cal.textContent="";
+    const cal=$("cal"); cal.textContent=""; cal.className="cal";
     for(const n of ["월","화","수","목","금","토","일"]){const h=document.createElement("div");h.className="dow";h.textContent=n;cal.appendChild(h);}
     const by={};
     for(const x of jobsAll){(by[x.j.date+"|"+x.j.ampm]=by[x.j.date+"|"+x.j.ampm]||[]).push(x);}
@@ -322,22 +441,22 @@ summary{cursor:pointer;font-weight:700}
       const cell=document.createElement("div");
       cell.className="day"+(d.getMonth()!==view.m?" out":"")+(key===ymd(today)?" today":"")+(+wkMon===+week?" selw":"")+(key<fw?" pre":"");
       const dn=document.createElement("button"); dn.type="button"; dn.className="dn num";
-      dn.textContent=d.getDate()===1?`${d.getMonth()+1}/1`:String(d.getDate());
-      dn.setAttribute("aria-label",`${d.getMonth()+1}월 ${d.getDate()}일이 있는 주 선택`);
-      if(key>=fw) dn.addEventListener("click",()=>{week=wkMon;render();}); else dn.disabled=true;
+      const sp=document.createElement("span"); sp.textContent=d.getDate()===1?`${d.getMonth()+1}/1`:String(d.getDate()); dn.appendChild(sp);
+      dn.setAttribute("aria-label",`${d.getMonth()+1}월 ${d.getDate()}일이 있는 주 보기`);
+      if(key>=fw) dn.addEventListener("click",()=>{mode="week";setWeek(wkMon);}); else dn.disabled=true;
       cell.appendChild(dn);
       for(const half of ["오전","오후"]){
         const h=document.createElement("div"); h.className="half "+(half==="오전"?"am":"pm"); h.setAttribute("role","group"); h.setAttribute("aria-label",half);
         for(const x of by[key+"|"+half]||[]) h.appendChild(jobChip(x,d));
         cell.appendChild(h);
       }
-      const day=jobsAll.filter(x=>x.j.date===key&&!x.j.cancel&&!x.st.exclude);
+      const day=jobsAll.filter(x=>x.j.date===key&&live(x));
       if(day.length){
-        const mine=day.reduce((t,x)=>t+x.c.mine,0), han=day.reduce((t,x)=>t+x.c.han,0);
+        const t=sumOf(day);
         const f=document.createElement("div"); f.className="dsum num"+(day.every(x=>x.j.done)?"":" est");
-        f.setAttribute("aria-label",`${d.getMonth()+1}월 ${d.getDate()}일 킴 ${won(mine)}, 김한준님 ${won(han)}`);
-        const part=(cls,t)=>{const e=document.createElement("span");e.className=cls;e.textContent=t;return e;};
-        f.append(part("l m","킴"),part("v m",man(mine)),part("l","김한준님"),part("v",man(han))); cell.appendChild(f);
+        f.setAttribute("aria-label",`${d.getMonth()+1}월 ${d.getDate()}일 킴 ${won(t.mine)}, 김한준님 ${won(t.han)}`);
+        f.innerHTML=`<span class="m">킴</span><span class="v m">${man(t.mine)}</span><span>김한준님</span><span class="v">${man(t.han)}</span>`;
+        cell.appendChild(f);
       }
       cal.appendChild(cell);
     }
@@ -497,19 +616,23 @@ summary{cursor:pointer;font-weight:700}
     week=w<FIRST_WEEK?new Date(FIRST_WEEK):w;
     events=[]; render(); loadEvents();
   }
-  function changeWeek(delta){
-    const w=addDays(week,7*delta);
-    if(w<FIRST_WEEK) return;
+  // 주를 바꾸고, 그 주가 지금 불러온 달 범위를 벗어나면 그 달 일정을 새로 불러온다
+  function setWeek(w){
+    if(w<FIRST_WEEK) w=new Date(FIRST_WEEK);
     week=w;
-    if(w<gridStart()||w>lastMon()){
-      view={y:w.getFullYear(),m:w.getMonth()};
-      events=[]; render(); loadEvents();
-    } else render();
+    if(w<gridStart()||w>lastMon()){ view={y:w.getFullYear(),m:w.getMonth()}; events=[]; render(); loadEvents(); } else render();
   }
-  $("mprev").addEventListener("click",()=>changeMonth(-1));
-  $("mnext").addEventListener("click",()=>changeMonth(1));
-  $("wprev").addEventListener("click",()=>changeWeek(-1));
-  $("wnext").addEventListener("click",()=>changeWeek(1));
+  const changeWeek=delta=>setWeek(addDays(week,7*delta));
+  $("pprev").addEventListener("click",()=>mode==="week"?changeWeek(-1):changeMonth(-1));
+  $("pnext").addEventListener("click",()=>mode==="week"?changeWeek(1):changeMonth(1));
+  $("vWeek").addEventListener("click",()=>{mode="week";render();});
+  $("vMonth").addEventListener("click",()=>{mode="month";render();});
+  $("swap").addEventListener("click",()=>{mode=mode==="week"?"month":"week";render();});
+  $("ptoday").addEventListener("click",()=>{
+    if(mode==="week") setWeek(mondayOf(today));
+    else { const d=monthIdx(today.getFullYear(),today.getMonth())-monthIdx(view.y,view.m); if(d) changeMonth(d); }
+  });
+  $("score").addEventListener("click",e=>{const b=e.target.closest("[data-week]");if(!b)return;const [y,m,d]=b.dataset.week.split("-").map(Number);mode="week";setWeek(new Date(y,m-1,d));});
 
   render(); renderRates();
 
