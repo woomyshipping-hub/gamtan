@@ -230,3 +230,16 @@ test("같은 날짜 캘린더 조회는 요청당 한 번", async () => {
   assert.equal(lists, 1);
   assert.match(cal.events[0].description, /^추가금: 70,000원/);
 });
+
+test("'추가 없습니다'(0원)는 이미 있는 추가금을 지우지 않음, 금액 보고는 바꿈", async () => {
+  const P0 = { ...P_EXTRA, extra_amount: 0 };
+  const zeroExtract = async (msgs) => ({ items: msgs.map((m) => ({ index: m.index, ...(m.text === "오후 추가 없습니다" ? P0 : P_EXTRA) })) });
+  const db = fakeDb();
+  const cal = fakeCal([{ id: "pm", summary: "[자체영업] x 8평 원룸 (오후)", start: { dateTime: "2026-11-06T14:00:00+09:00" }, description: "추가금: 30,000원 (카톡 보고)\n주소: y" }]);
+  const h = makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: zeroExtract, calendarImpl: cal });
+  await h(ev([msg("오후 추가 없습니다", "2026-11-06T18:00:00+09:00")]));
+  assert.match(cal.events[0].description, /^추가금: 30,000원/);
+  assert.match(db.byText("오후 추가 없습니다").error, /기존 추가금 유지/);
+  await h(ev([msg(EXTRA_TEXT, "2026-11-06T18:30:00+09:00")]));
+  assert.match(cal.events[0].description, /^추가금: 70,000원/);
+});
