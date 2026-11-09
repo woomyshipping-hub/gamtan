@@ -201,6 +201,8 @@ form.wadd{display:grid;grid-template-columns:minmax(100px,1fr) minmax(130px,1fr)
 (() => {
   const CATS = { expense: ["인건비", "차량", "장비", "세제", "통신비", "기타"], income: ["매출"] };
   const KEY_STORE = "gamtan.ledgerKey";
+  // 열린 탭에 #k=… 주소를 붙여넣으면 브라우저가 다시 불러오지 않으므로 직접 새로고침
+  window.addEventListener("hashchange", () => { if (/k=/.test(location.hash)) location.reload(); });
   const $ = (id) => document.getElementById(id);
   const won = (n) => (Math.round(n) || 0).toLocaleString("ko-KR") + "원";
   const pad = (n) => String(n).padStart(2, "0");
