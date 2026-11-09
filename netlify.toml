@@ -25,6 +25,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/marketing"
+  to = "/.netlify/functions/marketing"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/state"
   to = "/.netlify/functions/state"
   status = 200

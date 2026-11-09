@@ -1,27 +1,12 @@
 <!doctype html><html lang="ko"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>감탄 정산</title><meta name="robots" content="noindex,nofollow">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/assets/theme.css">
 <style>
 /* 전광판(라인 스코어) 정산 화면. PC 우선, 밝은 화면.
    주간: 월~일 × (정산받을 총액·김한준님·킴) + 주 합계 / 월간: 주차 × 같은 3줄 + 월 합계.
    전광판 칸은 끝난 일정만 더한다(기존 agg 규칙). 아래는 주간 7일 칸 / 월간 달력. */
-:root{
-  --bg:#f3f1ec; --card:#ffffff; --cell:#f6f4ef; --ink:#17191c; --muted:#5d636a; --line:#e3dfd6; --line2:#cfc9bd;
-  --amber:#e8930c; --amber-ink:#4a2f00; --amber-soft:#ffe9bf; --amber-tint:#fff6e3;
-  /* 색은 회색 계열 + 호박색 하나. 크린토피아 = 호박색, 홈클린마스터 = 진한 회색 */
-  --crin:#e8930c; --crin-soft:#fff1d9; --own:#3d4148; --own-soft:#eeece6;
-  --accent:#8a5300; --warn:#b4541b; --warn-soft:#fbe7da;
-  --f-body:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
-  color-scheme:light;
-}
-*{box-sizing:border-box}
-html{accent-color:var(--amber);scrollbar-color:var(--line2) var(--bg)}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;caret-color:var(--amber)}
-::selection{background:var(--amber-soft)}
-[hidden]{display:none!important}
+/* 색·글꼴·기본 규칙은 /assets/theme.css */
 .wrap{max-width:1200px;margin:0 auto;padding-inline:max(20px,env(safe-area-inset-left,0px)) max(20px,env(safe-area-inset-right,0px));padding-block:24px 64px;display:grid;gap:16px}
-.num{font-variant-numeric:tabular-nums}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
-h1{font-size:1.4rem;margin:0;font-weight:800;letter-spacing:-.02em}
 .ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .seg{display:inline-grid;grid-auto-flow:column;background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
 .seg button{font:inherit;font-weight:600;border:0;background:none;color:var(--muted);border-radius:7px;padding:6px 18px;cursor:pointer;transition:background .15s ease-out,color .15s ease-out}
@@ -34,12 +19,11 @@ h1{font-size:1.4rem;margin:0;font-weight:800;letter-spacing:-.02em}
 .nav button:disabled{opacity:.35;cursor:default}
 .nav strong{min-width:170px;text-align:center;font-size:1.05rem}
 .tbtn{padding:0 14px;font-size:.9rem}
-:is(button,input,select,summary):focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .status{font-size:.82rem;color:var(--muted)}
 .banner{border-radius:12px;padding:12px 14px;background:var(--warn-soft);color:var(--ink);font-size:.9rem}
 
 /* 전광판 */
-.board{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px 16px;display:grid;gap:12px;box-shadow:0 1px 2px rgba(23,25,28,.04),0 6px 20px rgba(23,25,28,.04)}
+.board{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px 16px;display:grid;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04)}
 .bhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px 16px;flex-wrap:wrap}
 .bhead strong{font-size:1.1rem}
 .sm{font-size:.85rem;color:var(--muted)}
@@ -56,7 +40,7 @@ table.score{width:100%;border-collapse:separate;border-spacing:5px;min-width:760
 .score th button:hover{background:var(--cell);color:var(--ink)}
 .score th.tot{color:var(--amber-ink)}
 .score td{background:var(--cell);border-radius:8px;text-align:center;font-size:1.25rem;font-weight:700;padding:12px 6px;color:var(--ink);white-space:nowrap}
-.score td.z{color:#b9b4a9;font-weight:500}
+.score td.z{color:#bdbdbd;font-weight:500}
 .score td small{display:block;font-size:.72rem;font-weight:500;color:var(--muted);margin-top:1px}
 .score th.l{text-align:left;font-size:.92rem;font-weight:600;color:var(--ink);padding:0 4px 0 2px}
 .score td.tot{background:var(--amber-soft);color:var(--amber-ink);font-size:1.45rem;font-weight:800;box-shadow:inset 0 0 0 1px #f1c56e}
@@ -96,7 +80,7 @@ table.score{width:100%;border-collapse:separate;border-spacing:5px;min-width:760
 .dow{padding:8px 0;text-align:center;font-size:.8rem;font-weight:600;color:var(--muted);background:var(--cell);border-bottom:1px solid var(--line)}
 .day{min-width:0;min-height:128px;display:flex;flex-direction:column;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card)}
 .day:nth-child(7n){border-right:0}
-.day.selw{background:#f8f6f1}
+.day.selw{background:#f7f7f7}
 .day.pre{opacity:.4}
 .dn{font:inherit;font-size:.95rem;font-weight:700;background:none;border:0;color:var(--ink);text-align:left;padding:6px 8px 2px;cursor:pointer;min-height:30px}
 .dn:hover{color:var(--amber-ink)}
@@ -157,7 +141,7 @@ summary{cursor:pointer;font-weight:700}
 
 <main class="wrap">
   <header>
-    <h1>감탄 정산</h1>
+    <div class="brand"><h1 class="vh">감탄 정산</h1><b aria-hidden="true">감탄</b><nav class="apps" aria-label="화면"><a href="/" aria-current="page">정산</a><a href="/ledger/">장부</a><a href="/marketing/">마케팅</a></nav></div>
     <div class="ctrl">
       <div class="seg" role="group" aria-label="보기">
         <button type="button" id="vWeek" aria-pressed="true">주간</button>
