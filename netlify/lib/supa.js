@@ -20,7 +20,8 @@ function makeSupa(env, fetchImpl) {
       e.status = r.status;
       throw e;
     }
-    return r.status === 204 ? null : r.json();
+    const t = await r.text();
+    return t ? JSON.parse(t) : null;
   };
 }
 
