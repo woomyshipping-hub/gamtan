@@ -7,6 +7,7 @@
 // 환경변수: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 const crypto = require("crypto");
 const { makeSupa } = require("../lib/supa");
+const { makeSheets } = require("../lib/google");
 
 const CATEGORIES = { income: ["매출"], expense: ["인건비", "차량", "장비", "세제", "통신비", "기타"] };
 const ENTRY_COLS = "id,entry_date,kind,category,amount,memo,worker_id,created_at";
@@ -50,6 +51,26 @@ function makeHandler({ env = process.env, fetchImpl = fetch } = {}) {
 
     const q = event.queryStringParameters || {};
     try {
+      // 가계부 시트 구조 확인: 탭 이름과 탭마다 앞 6줄 (가져오기 규칙을 정하기 위한 용도)
+      if (event.httpMethod === "GET" && q.preview === "sheet") {
+        if (!env.GOOGLE_SERVICE_ACCOUNT_JSON) return reply(503, { error: "google not configured" });
+        const [setting] = await rest("app_settings?key=eq.ledger_sheet_id&select=value");
+        if (!setting) return reply(404, { error: "가계부 시트가 등록되지 않음" });
+        const sheets = makeSheets(env, fetchImpl);
+        try {
+          const meta = await sheets.tabs(setting.value);
+          const tabs = [];
+          for (const t of (meta.sheets || []).slice(0, 8)) {
+            const title = t.properties.title;
+            const rows = await sheets.values(setting.value, `'${title.replace(/'/g, "''")}'!A1:P6`);
+            tabs.push({ title, rowCount: t.properties.gridProperties.rowCount, rows: rows.map((r) => r.map((c) => String(c).slice(0, 40))) });
+          }
+          return reply(200, { title: meta.properties.title, tabs });
+        } catch (e) {
+          return reply(502, { error: String(e.message).slice(0, 300) });
+        }
+      }
+
       if (event.httpMethod === "GET") {
         const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(q.month || "") ? q.month : null;
         if (!month) return reply(400, { error: "month=YYYY-MM 필요" });

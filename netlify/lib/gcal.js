@@ -1,9 +1,8 @@
 // 구글 캘린더 쓰기 (서비스 계정). 서비스 계정은 캘린더를 "일정 변경" 권한으로 공유받아야 한다.
 // api/events.js(읽기 전용, sha256 고정)와 같은 환경변수: GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_CALENDAR_ID
-const crypto = require("crypto");
+const { serviceToken } = require("./google");
 
 const OWN_TAGS = ["[자체영업]", "[홈클린마스터]"];
-const b64 = (v) => Buffer.from(typeof v === "string" ? v : JSON.stringify(v)).toString("base64url");
 
 // 정산 페이지와 같은 규칙: 제목에 (오전)/(오후)가 있으면 그것, 없으면 시작 시각 13시 전이면 오전
 function ampmOf(ev) {
@@ -28,19 +27,7 @@ function makeCalendar(env, fetchImpl) {
   let token = null;
 
   async function auth() {
-    if (token) return token;
-    const now = Math.floor(Date.now() / 1000);
-    const head = b64({ alg: "RS256", typ: "JWT" });
-    const claim = b64({ iss: key.client_email, scope: "https://www.googleapis.com/auth/calendar.events", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 });
-    const sig = crypto.createSign("RSA-SHA256").update(`${head}.${claim}`).sign(key.private_key).toString("base64url");
-    const r = await fetchImpl("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${head}.${claim}.${sig}` }),
-    });
-    const j = await r.json();
-    if (!r.ok || !j.access_token) throw new Error("google token " + r.status);
-    token = j.access_token;
+    token = token || (await serviceToken(key, "https://www.googleapis.com/auth/calendar.events", fetchImpl));
     return token;
   }
 
