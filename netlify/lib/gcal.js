@@ -45,6 +45,18 @@ function makeCalendar(env, fetchImpl) {
       return (j.items || []).filter((e) => e.status !== "cancelled" && OWN_TAGS.some((t) => (e.summary || "").includes(t)));
     },
     insert: (event) => call(base, { method: "POST", body: JSON.stringify(event) }),
+    patch: (id, body) => call(`${base}/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
+    // 그날 모든 일정 (취소 제외)
+    async eventsOn(date) {
+      const q = new URLSearchParams({ timeMin: `${date}T00:00:00+09:00`, timeMax: `${date}T23:59:59+09:00`, singleEvents: "true", maxResults: "100", timeZone: "Asia/Seoul" });
+      return ((await call(`${base}?${q}`)).items || []).filter((e) => e.status !== "cancelled");
+    },
+    // 글자 검색 (주문번호 찾기): 지난 120일 ~ 앞으로 365일
+    async search(text) {
+      const now = Date.now();
+      const q = new URLSearchParams({ q: text, timeMin: new Date(now - 120 * 864e5).toISOString(), timeMax: new Date(now + 365 * 864e5).toISOString(), singleEvents: "true", maxResults: "50" });
+      return ((await call(`${base}?${q}`)).items || []).filter((e) => e.status !== "cancelled");
+    },
     patchDescription: (id, description) => call(`${base}/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ description }) }),
   };
 }
