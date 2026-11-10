@@ -99,7 +99,7 @@ test("새 일정 → 캘린더 등록(정산 페이지 제목 형식), 잡담은
   assert.equal(cal.events.length, 1);
 });
 
-test("같은 날·시간대에 이미 일정이 있으면 새로 만들지 않음", async () => {
+test("같은 날·시간대에 같은 일(지역·평수)이 이미 있으면 새로 만들지 않음", async () => {
   const db = fakeDb();
   const cal = fakeCal([{ id: "manual1", summary: "[자체영업] 창원 마산합포구 33평 아파트 (오후)", start: { dateTime: "2026-11-06T14:00:00+09:00" }, description: "" }]);
   const r = JSON.parse((await makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: fakeExtract, calendarImpl: cal })(ev([msg(SCHEDULE_TEXT, "2026-11-04T16:11:00+09:00")]))).body);
@@ -242,4 +242,38 @@ test("'추가 없습니다'(0원)는 이미 있는 추가금을 지우지 않음
   assert.match(db.byText("오후 추가 없습니다").error, /기존 추가금 유지/);
   await h(ev([msg(EXTRA_TEXT, "2026-11-06T18:30:00+09:00")]));
   assert.match(cal.events[0].description, /^추가금: 70,000원/);
+});
+
+test("같은 메시지 판정은 날짜·보낸 사람·내용 (시각이 몇 분 달라도 같은 메시지)", async () => {
+  const { dedupeKey } = require("../netlify/functions/inbox");
+  assert.equal(dedupeKey("kakao", "c", "a", "2026-11-10T13:05:00+09:00", "x"), dedupeKey("kakao", "c", "a", "2026-11-10T13:09:00+09:00", "x"));
+  assert.notEqual(dedupeKey("kakao", "c", "a", "2026-11-10T13:05:00+09:00", "x"), dedupeKey("kakao", "c", "a", "2026-11-11T13:05:00+09:00", "x"));
+  assert.equal(dedupeKey("kakao", "c", "a", "2026-11-10T23:30:00+09:00", "x"), dedupeKey("kakao", "c", "a", "2026-11-10T14:30:00Z", "x"));
+  const db = fakeDb(), cal = fakeCal();
+  const h = makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: fakeExtract, calendarImpl: cal });
+  await h(ev([msg(SCHEDULE_TEXT, "2026-11-04T16:11:00+09:00")]));
+  const r = JSON.parse((await h(ev([msg(SCHEDULE_TEXT, "2026-11-04T16:14:00+09:00")]))).body);
+  assert.equal(r.skipped_duplicates, 1);
+  assert.equal(cal.events.length, 1);
+});
+
+test("같은 날 오후에 다른 일이 있으면 새로 등록 (2026-11-06 사례)", async () => {
+  const db = fakeDb();
+  const cal = fakeCal([{ id: "e1", summary: "[자체영업] 창원 마산합포구 33평 아파트 (오후)", start: { dateTime: "2026-11-06T13:00:00+09:00" }, description: "주소: 창원시 마산합포구 OO동" }]);
+  const P2 = { ...P_SCHEDULE, region: "양산", area_py: 12, address: "양산시 북안 OO", start_time: "17:30" };
+  const T2 = "내일건 양산 12평";
+  const ex = async (msgs) => ({ items: msgs.map((m) => ({ index: m.index, ...(m.text === T2 ? P2 : P_OTHER) })) });
+  const r = JSON.parse((await makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: ex, calendarImpl: cal })(ev([msg(T2, "2026-11-05T16:16:00+09:00")]))).body);
+  assert.equal(r.created, 1);
+  assert.equal(cal.events.length, 2);
+  assert.equal(cal.events[1].summary, "[자체영업] 양산 12평 아파트 (오후)");
+});
+
+test("추가금 메시지에 날짜가 없으면 보낸 날짜로 찾음", async () => {
+  const db = fakeDb();
+  const cal = fakeCal([{ id: "pm", summary: "[자체영업] 창원 마산합포구 33평 아파트 (오후)", start: { dateTime: "2026-11-06T13:00:00+09:00" }, description: "주소: x" }]);
+  const ex = async (msgs) => ({ items: msgs.map((m) => ({ index: m.index, ...P_EXTRA, work_date: null, extra_amount: 0 })) });
+  const r = JSON.parse((await makeHandler({ env: ENV, fetchImpl: db.fetchImpl, extractImpl: ex, calendarImpl: cal })(ev([msg("오후 추가 없습니다", "2026-11-06T19:03:00+09:00")]))).body);
+  assert.equal(r.extra_applied, 1);
+  assert.match(cal.events[0].description, /^추가금: 0원/);
 });
