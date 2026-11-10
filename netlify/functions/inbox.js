@@ -10,6 +10,7 @@ const crypto = require("crypto");
 const { extract } = require("../lib/extract");
 const { makeCalendar, ampmOf, withExtra } = require("../lib/gcal");
 const { supaHeaders } = require("../lib/supa");
+const { parseCrin, applyCrin } = require("../lib/cleantopia");
 const { extraOf } = require("../../api/events.js").helpers; // 정산 페이지와 같은 "추가금: N원" 해석
 
 const MAX_MESSAGES = 5; // 함수 제한시간(10초) 안에 끝내기 위해 한 번에 5건까지
@@ -122,6 +123,10 @@ function cachedCalendar(cal) {
       for (const list of days.values()) for (const x of list) if (x.id === id) x.description = description;
       return e;
     },
+    // 크린토피아 처리용 (캐시 없이 그대로)
+    patch: (id, body) => cal.patch(id, body),
+    eventsOn: (date) => cal.eventsOn(date),
+    search: (text) => cal.search(text),
   };
 }
 
@@ -181,7 +186,7 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
     try { inserted = await db.insertNew(rows); } catch (e) { return reply(502, { error: "storage error" }); }
 
     const started = Date.now();
-    const result = { received: rows.length, new: inserted.length, skipped_duplicates: rows.length - inserted.length, resumed: 0, created: 0, duplicate: 0, extra_applied: 0, unmatched: 0, ignored: 0, error: 0, deferred: 0 };
+    const result = { received: rows.length, new: inserted.length, skipped_duplicates: rows.length - inserted.length, resumed: 0, created: 0, updated: 0, duplicate: 0, extra_applied: 0, unmatched: 0, ignored: 0, error: 0, deferred: 0 };
     let leftovers = [];
     try { leftovers = await db.pending(MAX_MESSAGES - inserted.length, new Date(now().getTime() - RETRY_AFTER_MS).toISOString()); } catch (e) { leftovers = []; }
     leftovers = leftovers.filter((l) => !inserted.some((r) => r.id === l.id));
@@ -189,23 +194,33 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
     inserted = [...leftovers, ...inserted];
     if (inserted.length === 0) return reply(200, result);
 
-    let items;
-    try {
-      ({ items } = await extractImpl(inserted.map((r, i) => ({ index: i, sender: r.sender, sent_at: r.sent_at, text: r.text })), { now: now() }));
-    } catch (e) {
-      await Promise.all(inserted.map((r) => db.update(r.id, { state: "error", error: String(e.message).slice(0, 500) }).catch(() => {})));
-      result.error = inserted.length;
-      return reply(200, result); // 원문은 저장됨. 나중에 다시 처리 가능
+    // 크린토피아 문자는 규칙으로 읽고(AI 안 씀), 나머지(카톡)는 AI로 읽는다
+    const crin = new Map();
+    for (const r of inserted) { const c = parseCrin(r.text); if (c) crin.set(r.id, c); }
+    const forAi = inserted.filter((r) => !crin.has(r.id));
+    let items = [];
+    if (forAi.length) {
+      try {
+        ({ items } = await extractImpl(forAi.map((r, i) => ({ index: i, sender: r.sender, sent_at: r.sent_at, text: r.text })), { now: now() }));
+      } catch (e) {
+        await Promise.all(forAi.map((r) => db.update(r.id, { state: "error", error: String(e.message).slice(0, 500) }).catch(() => {})));
+        result.error = forAi.length;
+        if (!crin.size) return reply(200, result); // 원문은 저장됨. 나중에 다시 처리 가능
+        items = null;
+      }
     }
 
     const cal = cachedCalendar(calendarImpl || makeCalendar(env, fetchImpl));
     const writes = [];
     for (const [i, row] of inserted.entries()) {
       if (Date.now() - started > budgetMs) { result.deferred++; continue; } // state=new 그대로 → 다음 호출에서 처리
-      const p = items.find((x) => x.index === i);
+      const c = crin.get(row.id);
+      if (!c && items === null) continue; // AI 실패분은 위에서 error로 기록함
+      const p = c ? null : items.find((x) => x.index === forAi.indexOf(row));
       let out;
       try {
-        if (!p) out = { state: "error", error: "추출 결과 없음" };
+        if (c) out = await applyCrin(cal, c, row);
+        else if (!p) out = { state: "error", error: "추출 결과 없음" };
         else if (p.kind === "schedule") out = await applySchedule(cal, p, row);
         else if (p.kind === "extra") out = await applyExtra(cal, { ...p, work_date: p.work_date || kstDate(row.sent_at) || null }); // 날짜가 없으면 보낸 날
         else out = { state: "ignored" };
@@ -213,7 +228,7 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
         out = { state: "error", error: String(e.message).slice(0, 500) };
       }
       result[out.state]++;
-      const parsed = p ? (({ index, ...rest }) => rest)(p) : null;
+      const parsed = c ? (({ raw, ...rest }) => rest)(c) : p ? (({ index, ...rest }) => rest)(p) : null;
       writes.push(db.update(row.id, { ...out, parsed }).catch(() => {}));
     }
     await Promise.all(writes);
