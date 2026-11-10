@@ -29,6 +29,12 @@ const sameSecret = (a, b) => {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 };
 
+// 같은 메시지 판정: 보낸 날짜(한국)·보낸 사람·내용. 시각(분)은 넣지 않는다 —
+// 데스크톱이 화면에서 읽을 때 묶음 메시지 시각을 추정하므로 확인할 때마다 몇 분씩 달라질 수 있다.
+const kstDate = (iso) => (iso ? new Date(new Date(iso).getTime() + 9 * 3600e3).toISOString().slice(0, 10) : "");
+const dedupeKey = (source, chat, sender, sentAt, text) =>
+  crypto.createHash("sha256").update([source, chat, sender, kstDate(sentAt), text].join("\u0001")).digest("hex");
+
 const kstText = (iso) => new Date(new Date(iso).getTime() + 9 * 3600e3).toISOString().replace("T", " ").slice(0, 16);
 
 function parseBody(event) {
@@ -119,11 +125,22 @@ function cachedCalendar(cal) {
   };
 }
 
+const squash = (t) => String(t || "").replace(/[\s,.\-()\[\]]/g, "");
+function sameJob(ev, p) {
+  const desc = squash(ev.description), sum = squash(ev.summary);
+  const addr = squash(p.address);
+  if (addr.length >= 8 && desc.includes(addr.slice(0, 12))) return true;              // 주소 앞부분이 같음
+  if (p.region && p.area_py && sum.includes(squash(p.region)) && sum.includes(`${p.area_py}평`)) return true; // 제목의 지역·평수가 같음
+  if (!p.region && !addr) return true;                                               // 정보가 없으면 보수적으로 같은 일로 본다
+  return false;
+}
+
 async function applySchedule(cal, p, row) {
   if (!p.work_date) return { state: "unmatched", error: "날짜를 찾지 못함" };
   const { ampm, event } = scheduleEvent(p, row);
   if (!ampm) return { state: "unmatched", error: "오전/오후를 찾지 못함" };
-  const same = (await cal.ownEventsOn(p.work_date)).find((e) => ampmOf(e) === ampm);
+  // 같은 날 같은 시간대에 일이 2건일 수 있다(2026-11-06 실제 사례). 같은 일인지는 주소나 지역+평수로 본다.
+  const same = (await cal.ownEventsOn(p.work_date)).find((e) => ampmOf(e) === ampm && sameJob(e, p));
   if (same) return { state: "duplicate", gcal_event_id: same.id };
   const created = await cal.insert(event);
   return { state: "created", gcal_event_id: created.id };
@@ -158,7 +175,7 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
       sender: m.sender,
       sent_at: m.sent_at,
       text: m.text,
-      dedupe_key: crypto.createHash("sha256").update([input.source, input.chat, m.sender, m.sent_at, m.text].join("\u0001")).digest("hex"),
+      dedupe_key: dedupeKey(input.source, input.chat, m.sender, m.sent_at, m.text),
     }));
     let inserted;
     try { inserted = await db.insertNew(rows); } catch (e) { return reply(502, { error: "storage error" }); }
@@ -190,7 +207,7 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
       try {
         if (!p) out = { state: "error", error: "추출 결과 없음" };
         else if (p.kind === "schedule") out = await applySchedule(cal, p, row);
-        else if (p.kind === "extra") out = await applyExtra(cal, p);
+        else if (p.kind === "extra") out = await applyExtra(cal, { ...p, work_date: p.work_date || kstDate(row.sent_at) || null }); // 날짜가 없으면 보낸 날
         else out = { state: "ignored" };
       } catch (e) {
         out = { state: "error", error: String(e.message).slice(0, 500) };
@@ -207,3 +224,4 @@ function makeHandler({ env = process.env, fetchImpl = fetch, extractImpl = extra
 exports.handler = makeHandler();
 exports.makeHandler = makeHandler;
 exports.scheduleEvent = scheduleEvent;
+exports.dedupeKey = dedupeKey;
