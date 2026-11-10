@@ -621,7 +621,7 @@ summary{cursor:pointer;font-weight:700}
   render(); renderRates();
 
   loadState(); loadEvents();
-  setInterval(()=>{ loadEvents(); loadState(); },60000);
+  setInterval(()=>{ if(!document.hidden){ loadEvents(); loadState(); } },300000); // 5분마다, 화면이 보일 때만 (Netlify 크레딧 절약)
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ loadEvents(); loadState(); } });
 })();
 </script>

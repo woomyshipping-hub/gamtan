@@ -19,7 +19,7 @@
  },
  "files": {
   "public/index.html": {
-   "sha256": "87834c81d96b0b95a9f35b20d2bc6ac878d7d3b17c92c81d4669406e0ad460a5"
+   "sha256": "c93354c6045e5abc7bcf0a3879aec8d94db27580e051a26bbd198b5badf8a2c8"
   },
   "api/events.js": {
    "sha256": "70d0724d25f1261807185b4a75f1c820ad1d9d211996b45f767cc8e0eb28b539"
