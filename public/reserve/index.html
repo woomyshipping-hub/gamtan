@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="감탄 입주청소 예약: 빈 날짜를 고르고 집 정보를 넣으면 견적이 바로 나옵니다. 예약금 입금이 확인되면 자동으로 예약이 확정됩니다.">
+<title>감탄 입주청소 예약</title>
+<link rel="stylesheet" href="/assets/theme.css">
+<script src="/assets/quote.js"></script>
+<style>
+/* 고객용 예약 페이지. 색·글꼴은 /assets/theme.css (운영 화면과 같은 토큰). 사이드바 없음. */
+.wrap{max-width:1080px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:28px 120px}
+.top{display:grid;gap:6px;margin-bottom:22px}
+.brand{font-size:.95rem;font-weight:800;letter-spacing:-.02em}
+h1{font-size:clamp(1.5rem,4.6vw,2.1rem);line-height:1.2;margin:0;font-weight:800;letter-spacing:-.03em}
+.lead{margin:0;color:var(--muted);max-width:46ch}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+.stack{display:grid;gap:16px;min-width:0}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 20px;display:grid;gap:14px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);min-width:0}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+h2{font-size:1.05rem;margin:0;font-weight:700;display:flex;align-items:center;gap:8px}
+h2 .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;font-size:.75rem}
+.sm{font-size:.85rem;color:var(--muted);margin:0}
+.err{color:var(--warn)}
+.banner{border-radius:12px;padding:12px 14px;background:var(--warn-soft);font-size:.92rem}
+
+/* 달력 */
+.mnav{display:flex;align-items:center;gap:6px}
+.mnav button{font:inherit;width:36px;height:36px;border:1px solid var(--line2);background:var(--card);border-radius:9px;cursor:pointer;font-size:1.05rem}
+.mnav button:disabled{opacity:.35;cursor:default}
+.mnav strong{min-width:96px;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{font-size:.75rem;color:var(--muted);text-align:center;padding:2px 0 4px;font-weight:600}
+.d{font:inherit;aspect-ratio:1/1;min-height:40px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);display:grid;place-content:center;gap:0;cursor:pointer;line-height:1.1;padding:0;transition:background .12s ease-out}
+.d b{font-size:1rem;font-weight:700;white-space:nowrap}
+.d b i{font-style:normal;font-size:.72em;font-weight:600;margin-left:1px}
+@media (max-width:400px){.panel{padding:14px 12px 16px}.cal{gap:3px}.d{aspect-ratio:auto;height:46px;min-height:0;min-width:0;border-radius:8px}.d b{font-size:.86rem;letter-spacing:-.03em}.d b i{font-size:.75em;margin-left:0}.d small{font-size:.58rem}}
+.d small{font-size:.62rem;color:var(--muted);font-weight:600}
+.d:hover:not(:disabled){background:var(--amber-tint);border-color:#f1c56e}
+.d:disabled{background:var(--cell);border-color:var(--cell);color:#b5b5b5;cursor:default}
+.d:disabled small{color:#bdbdbd}
+.d.blank{visibility:hidden}
+.d[aria-pressed="true"],.d[aria-pressed="true"]:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:#fff}
+.d[aria-pressed="true"] small{color:#d6d6d6}
+.slots{display:flex;gap:8px;flex-wrap:wrap}
+.seg{font:inherit;font-weight:600;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px}
+.seg small{font-weight:500;color:var(--muted);font-size:.8rem}
+.seg[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.seg[aria-pressed="true"] small{color:#d6d6d6}
+.seg:disabled{opacity:.4;cursor:default}
+.legend{display:flex;gap:14px;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:5px;border:1px solid var(--line2)}
+
+/* 입력 */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fld{display:grid;gap:5px;min-width:0}
+.fld>span{font-size:.82rem;color:var(--muted);font-weight:600}
+.full{grid-column:1/-1}
+input,select,textarea{font:inherit;font-size:1rem;border:1px solid var(--line2);border-radius:10px;background:var(--card);color:var(--ink);padding:0 12px;width:100%;min-width:0}
+input,select{height:46px}
+textarea{padding:10px 12px;min-height:72px;resize:vertical}
+input::placeholder,textarea::placeholder{color:#9a9a9a}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:inherit;font-size:.92rem;font-weight:600;height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.step{border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:8px;justify-items:center}
+.step>span{font-size:.82rem;color:var(--muted);font-weight:600}
+.stepc{display:flex;align-items:center;gap:6px}
+.stepc button{font:inherit;width:36px;height:36px;border-radius:50%;border:1px solid var(--line2);background:var(--card);cursor:pointer;font-size:1.1rem;line-height:1}
+.stepc button:disabled{opacity:.35;cursor:default}
+.stepc output{min-width:28px;text-align:center;font-size:1.2rem;font-weight:800}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.92rem}
+.check input{width:20px;height:20px;flex:none;margin-top:2px}
+details{font-size:.85rem;color:var(--muted)}
+details summary{cursor:pointer}
+details p{margin:6px 0 0}
+
+/* 견적 */
+.quote{position:sticky;top:16px}
+.qlines{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:.9rem}
+.qlines li{display:flex;justify-content:space-between;gap:10px}
+.qlines li span:first-child{color:var(--muted)}
+.qtotal{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding-top:12px}
+.qtotal b{font-size:1.7rem;font-weight:800;letter-spacing:-.02em}
+.qdep{display:grid;gap:4px;background:var(--amber-tint);border-radius:12px;padding:12px 14px;font-size:.92rem}
+.qdep div{display:flex;justify-content:space-between}
+.qdep b{color:var(--amber-ink)}
+.qsel{font-size:.9rem;display:grid;gap:2px}
+.qsel b{font-size:1rem}
+.pbtn{font:inherit;font-weight:700;font-size:1.02rem;height:52px;border:0;border-radius:12px;background:var(--ink);color:#fff;padding:0 18px;cursor:pointer;width:100%}
+.pbtn:disabled{opacity:.45;cursor:default}
+.gbtn{font:inherit;font-weight:600;height:44px;border:1px solid var(--line2);border-radius:10px;background:var(--card);color:var(--ink);padding:0 16px;cursor:pointer}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+/* 휴대폰 하단 견적 막대 */
+.bar{display:none}
+
+/* 신청 결과 */
+.done{max-width:560px;margin:0 auto;display:grid;gap:16px}
+.state{display:grid;gap:6px;text-align:center;padding:8px 0 4px}
+.state .tag{justify-self:center;font-size:.8rem;font-weight:700;border-radius:999px;padding:4px 12px;background:var(--cell)}
+.state.ok .tag{background:var(--amber);color:#fff}
+.state.wait .tag{background:var(--amber-soft);color:var(--amber-ink)}
+.state h2{justify-content:center;font-size:1.35rem}
+.acct{display:grid;gap:10px;border:2px solid var(--ink);border-radius:14px;padding:16px}
+.acct .row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.acct .row span{color:var(--muted);font-size:.88rem}
+.acct .row b{font-size:1.05rem;text-align:right}
+.acct .big b{font-size:1.4rem}
+.copy{font:inherit;font-size:.8rem;font-weight:600;border:1px solid var(--line2);background:var(--card);border-radius:8px;padding:4px 10px;cursor:pointer;margin-left:8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.92rem;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin-right:6px}
+
+/* 혜택 + 장점 */
+.hook{justify-self:start;display:inline-flex;align-items:center;gap:8px;background:var(--amber);color:#fff;font-weight:800;font-size:.92rem;border-radius:999px;padding:6px 14px;letter-spacing:-.01em}
+.promo{background:var(--amber-tint);border:1px solid #f1c56e;border-radius:16px;padding:16px 18px;display:grid;gap:10px;margin-bottom:16px}
+.promo .ph{flex-wrap:wrap}
+.promo .pt{font-size:1.05rem;font-weight:800;color:var(--amber-ink)}
+.promo .pc{font-size:.85rem;color:var(--amber-ink);font-weight:600}
+.promo .pc b{background:var(--amber);color:#fff;border-radius:6px;padding:1px 7px;margin-left:2px}
+.pitems{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.pitems li{background:var(--card);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.92rem;font-weight:600}
+.pitems li span{white-space:nowrap;display:flex;align-items:center;gap:6px}
+s.was{color:var(--muted);font-weight:500;font-size:.85em;text-decoration-thickness:1.5px}
+.free{display:inline-block;background:var(--amber);color:#fff;font-weight:800;font-size:.82rem;border-radius:6px;padding:2px 8px;line-height:1.3;letter-spacing:-.01em}
+.points{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:0 0 18px;padding:0;list-style:none}
+.points li{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:4px}
+.points b{font-size:.98rem;display:flex;gap:8px;align-items:center}
+.points b::before{content:"";width:16px;height:16px;flex:none;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.3 2.3 4.7-4.8' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat}
+.points span{font-size:.86rem;color:var(--muted);line-height:1.45}
+.qpromo{display:grid;gap:6px;border:1px dashed #f1c56e;border-radius:12px;padding:12px 14px;font-size:.88rem}
+.qpromo .h{display:flex;justify-content:space-between;font-weight:700;color:var(--amber-ink)}
+.qpromo div{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.qpromo div span:last-child{white-space:nowrap;display:flex;align-items:center;gap:6px}
+.qpromo .sum{border-top:1px solid #f1c56e;padding-top:8px;margin-top:2px;font-weight:800}
+.qpromo .sum .free{font-size:.9rem;padding:3px 10px}
+.rpromo{display:grid;gap:4px;background:var(--amber-tint);border-radius:12px;padding:12px 14px;font-size:.9rem}
+.rpromo b{color:var(--amber-ink)}
+
+@media (max-width:860px){
+  .cols{grid-template-columns:1fr}
+  .quote{position:static}
+  .bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -6px 20px rgba(0,0,0,.06)}
+  .bar .t{display:grid;line-height:1.2}
+  .bar .t small{color:var(--muted);font-size:.78rem}
+  .bar .t b{font-size:1.2rem}
+  .bar .pbtn{width:auto;height:46px}
+}
+@media (max-width:560px){.points{grid-template-columns:1fr;gap:6px}.points li{padding:10px 14px}.points span{font-size:.84rem;padding-left:24px}}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}.steps{gap:6px}.step{padding:8px 4px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">감탄 입주청소</span>
+    <span class="hook" id="hook" hidden></span>
+    <h1>날짜 고르고, 바로 견적 보고, 예약까지</h1>
+    <p class="lead">부산·경남. 빈 날짜를 고르고 집 정보를 넣으면 견적이 바로 나옵니다. 예약금 입금이 확인되면 자동으로 예약이 확정됩니다.</p>
+  </header>
+
+  <section class="promo" id="promo" aria-labelledby="promoT" hidden>
+    <div class="ph"><span class="pt" id="promoT"></span><span class="pc num" id="promoC"></span></div>
+    <ul class="pitems num" id="promoI"></ul>
+  </section>
+  <ul class="points" id="points" aria-label="감탄 입주청소의 약속" hidden></ul>
+
+  <div class="banner" id="fatal" hidden></div>
+
+  <form id="form" class="cols" novalidate autocomplete="on" hidden>
+    <div class="stack">
+      <section class="panel" aria-labelledby="h1d">
+        <div class="ph">
+          <h2 id="h1d"><span class="n">1</span>날짜</h2>
+          <div class="mnav"><button type="button" id="prev" aria-label="이전 달">‹</button><strong id="mlabel" class="num" aria-live="polite"></strong><button type="button" id="next" aria-label="다음 달">›</button></div>
+        </div>
+        <div class="cal num" id="cal" role="group" aria-label="예약 날짜"></div>
+        <div class="legend"><span><i></i>예약 가능</span><span><i style="background:var(--cell);border-color:var(--cell)"></i>마감</span><span><i style="background:var(--ink);border-color:var(--ink)"></i>선택</span></div>
+        <div id="slotBox" hidden>
+          <p class="sm" style="margin-bottom:8px" id="slotHint"></p>
+          <div class="slots" id="slots" role="group" aria-label="시간대"></div>
+        </div>
+        <p class="sm" id="calMsg" role="status"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="h2d">
+        <h2 id="h2d"><span class="n">2</span>집 정보</h2>
+        <div class="grid2">
+          <label class="fld"><span>지역</span><select id="region" required></select></label>
+          <label class="fld"><span>평수 (공급면적)</span><input id="py" type="number" inputmode="numeric" min="1" step="1" placeholder="예: 33" required></label>
+          <label class="fld full"><span>주소 (동·호수까지)</span><input id="address" autocomplete="street-address" maxlength="200" placeholder="예: 창원시 성산구 ○○로 12, 101동 1001호" required></label>
+          <div class="fld full"><span>건물</span><div class="chips" id="building" role="group" aria-label="건물 유형"></div></div>
+        </div>
+        <div class="steps" id="counts"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h3d">
+        <h2 id="h3d"><span class="n">3</span>예약자</h2>
+        <div class="grid2">
+          <label class="fld"><span>이름</span><input id="name" autocomplete="name" maxlength="20" required></label>
+          <label class="fld"><span>휴대폰</span><input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" maxlength="13" required></label>
+          <label class="fld full"><span>입금자명 (통장에 찍힐 이름)</span><input id="depositor" maxlength="20" required></label>
+          <label class="fld full"><span>요청 사항 (선택)</span><textarea id="memo" maxlength="300" placeholder="예: 입주 날짜, 비밀번호 전달 방법"></textarea></label>
+          <label class="hp" aria-hidden="true">웹사이트<input id="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <p class="sm">입금자명이 다르면 자동 확인이 되지 않습니다. 입금할 때 이 이름 그대로 보내 주세요.</p>
+        <label class="check"><input type="checkbox" id="agree" required><span>개인정보 수집·이용에 동의합니다 (필수)</span></label>
+        <details>
+          <summary>자세히</summary>
+          <p>수집 항목: 이름, 휴대폰 번호, 주소, 입금자명, 집 정보. 목적: 청소 예약 확인·작업 진행·연락. 보유 기간: 작업 완료 후 1년 뒤 파기. 동의하지 않으면 온라인 예약을 할 수 없습니다.</p>
+        </details>
+      </section>
+    </div>
+
+    <aside class="panel quote" aria-labelledby="hq">
+      <h2 id="hq">견적</h2>
+      <div class="qsel" id="qsel"></div>
+      <ul class="qlines num" id="qlines"></ul>
+      <div class="qtotal num"><span>총 견적</span><b id="qtotal">–</b></div>
+      <div class="qdep num" id="qdep" hidden>
+        <div><span>지금 입금할 예약금</span><b id="qdeposit"></b></div>
+        <div><span>작업 후 잔금</span><span id="qbalance"></span></div>
+      </div>
+      <div class="qpromo num" id="qpromo" hidden></div>
+      <p class="sm" id="qnote"></p>
+      <p class="sm err" id="formErr" role="alert"></p>
+      <button class="pbtn" id="submit" type="submit" disabled>예약 신청</button>
+      <p class="sm" id="holdNote"></p>
+      <p class="sm" id="notice"></p>
+    </aside>
+
+    <div class="bar" aria-hidden="true"><div class="t num"><small>총 견적</small><b id="barTotal">–</b></div><button class="pbtn" type="submit" id="barBtn" tabindex="-1" disabled>예약 신청</button></div>
+  </form>
+
+  <main id="result" class="done" hidden></main>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const won = (n) => (Math.round(n) || 0).toLocaleString("ko-KR") + "원";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+  const fmtDate = (d) => { const [y, m, dd] = d.split("-").map(Number); return `${m}월 ${dd}일 (${DOW[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()]})`; };
+  const fmtTime = (iso) => { const k = new Date(Date.parse(iso) + 9 * 3600e3).toISOString(); return `${+k.slice(5, 7)}월 ${+k.slice(8, 10)}일 ${k.slice(11, 16)}`; };
+  const STORE = "gamtan.reserve";
+  const manwon = (n) => (n % 10000 === 0 ? `${(n / 10000).toLocaleString("ko-KR")}만 원` : won(n));
+  const S = { cfg: null, month: null, first: null, last: null, days: {}, date: null, ampm: null, building: null, counts: { rooms: 3, baths: 2, verandas: 2 }, sending: false };
+
+  async function api(qs, opt) {
+    const r = await fetch("/api/booking" + (qs || ""), opt);
+    let j = {};
+    try { j = await r.json(); } catch (e) {}
+    if (!r.ok) throw Object.assign(new Error(j.error || "잠시 후 다시 시도해 주세요"), { status: r.status });
+    return j;
+  }
+
+  // ---------- 달력 ----------
+  const ym = (d) => d.slice(0, 7);
+  const shift = (m, n) => { const [y, mo] = m.split("-").map(Number); const d = new Date(Date.UTC(y, mo - 1 + n, 1)); return d.toISOString().slice(0, 7); };
+  async function loadMonth(m) {
+    S.month = m;
+    $("mlabel").textContent = `${+m.slice(0, 4)}년 ${+m.slice(5)}월`;
+    $("calMsg").textContent = "빈 날짜를 확인하는 중…";
+    $("cal").setAttribute("aria-busy", "true");
+    try {
+      const j = await api(`?month=${m}`);
+      S.cfg = window.GamtanQuote.merge(j.config); S.first = j.first; S.last = j.last; S.promo = j.promo || null;
+      drawPromo();
+      S.days = j.days;
+      if (S.month !== m) return;
+      $("calMsg").textContent = Object.keys(j.days).length ? "" : "이 달에는 예약 가능한 날짜가 없습니다. 다음 달을 확인해 주세요.";
+      setup();
+    } catch (e) {
+      S.days = {};
+      $("calMsg").textContent = e.status === 503 ? "예약 준비 중입니다." : "빈 날짜를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.";
+      $("calMsg").classList.add("err");
+    }
+    $("cal").removeAttribute("aria-busy");
+    drawCal();
+  }
+  function drawCal() {
+    const [y, mo] = S.month.split("-").map(Number);
+    const lead = new Date(Date.UTC(y, mo - 1, 1)).getUTCDay(); // 일요일 시작
+    const n = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    let h = DOW.map((d) => `<div class="dow">${d}</div>`).join("");
+    for (let i = 0; i < lead; i++) h += `<span class="d blank"></span>`;
+    for (let d = 1; d <= n; d++) {
+      const ds = `${S.month}-${String(d).padStart(2, "0")}`;
+      const open = S.days[ds];
+      const past = S.first && ds < S.first, far = S.last && ds > S.last;
+      const sub = open ? (open.length === 2 ? "가능" : open[0]) : past || far ? "" : "마감";
+      h += `<button type="button" class="d" data-d="${ds}"${open ? "" : " disabled"} aria-pressed="${S.date === ds}" aria-label="${fmtDate(ds)} ${open ? "예약 가능" : "예약 불가"}"><b>${d}<i>${DOW[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()]}</i></b><small>${sub}</small></button>`;
+    }
+    $("cal").innerHTML = h;
+    $("prev").disabled = !S.first || S.month <= ym(S.first);
+    $("next").disabled = !S.last || S.month >= ym(S.last);
+  }
+  $("cal").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-d]");
+    if (!b || b.disabled) return;
+    S.date = b.dataset.d;
+    const open = S.days[S.date];
+    if (!open.includes(S.ampm)) S.ampm = open.length === 1 ? open[0] : null;
+    drawCal(); drawSlots(); update();
+  });
+  function drawSlots() {
+    const open = S.date ? S.days[S.date] || [] : [];
+    $("slotBox").hidden = !S.date;
+    if (!S.date) return;
+    $("slotHint").textContent = `${fmtDate(S.date)} · 시작 시간대를 골라 주세요`;
+    $("slots").innerHTML = ["오전", "오후"].map((a) => `<button type="button" class="seg" data-a="${a}"${open.includes(a) ? "" : " disabled"} aria-pressed="${S.ampm === a}">${a}<small>${a === "오전" ? "9시 전후 시작" : "1~2시 전후 시작"}</small></button>`).join("");
+  }
+  $("slots").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (!b || b.disabled) return; S.ampm = b.dataset.a; drawSlots(); update(); });
+  $("prev").addEventListener("click", () => loadMonth(shift(S.month, -1)));
+  $("next").addEventListener("click", () => loadMonth(shift(S.month, 1)));
+
+  // ---------- 혜택·장점 ----------
+  function drawPromo() {
+    const p = S.promo, on = !!(p && p.active);
+    $("hook").hidden = !on; $("promo").hidden = !on;
+    if (on) {
+      $("hook").textContent = p.worth ? `지금 온라인 예약하면 총 ${manwon(p.worth)} 혜택` : `지금 온라인 예약하면 ${p.items[0].name} 무료`;
+      $("promoT").textContent = p.worth ? `${p.title} · 총 ${manwon(p.worth)}` : p.title;
+      const cond = [p.until ? `${+p.until.slice(5, 7)}월 ${+p.until.slice(8)}일까지 신청` : "", p.limit ? `선착순 ${p.limit}건 중 <b>${p.left}건 남음</b>` : ""].filter(Boolean);
+      $("promoC").innerHTML = cond.join(" · ");
+      $("promoI").innerHTML = p.items.map((x) => `<li>${esc(x.name)}<span>${x.value ? `<s class="was">${won(x.value)}</s>` : ""}<b class="free">무료</b></span></li>`).join("");
+    }
+    const pts = (S.cfg && S.cfg.points) || [];
+    $("points").hidden = !pts.length;
+    $("points").innerHTML = pts.map((x) => `<li><b>${esc(x.title)}</b>${x.body ? `<span>${esc(x.body)}</span>` : ""}</li>`).join("");
+    const qp = $("qpromo");
+    qp.hidden = !on;
+    if (on) qp.innerHTML = `<div class="h"><span>${esc(p.title)}</span><span>${p.worth ? `총 ${manwon(p.worth)} 혜택` : ""}</span></div>`
+      + p.items.map((x) => `<div><span>${esc(x.name)}</span><span>${x.value ? `<s class="was">${won(x.value)}</s>` : ""}<b class="free">무료</b></span></div>`).join("")
+      + (p.worth ? `<div class="sum"><span>혜택 합계</span><span><s class="was">${won(p.worth)}</s><b class="free">0원</b></span></div>` : "");
+  }
+
+  // ---------- 집 정보 ----------
+  let didSetup = false;
+  function setup() {
+    if (didSetup) return; didSetup = true;
+    const c = S.cfg;
+    $("region").innerHTML = `<option value="">지역 선택</option>` + c.regions.map((r) => `<option>${esc(r.name)}</option>`).join("");
+    $("py").min = c.min_py; $("py").max = c.max_py;
+    $("building").innerHTML = c.buildings.map((b) => `<button type="button" class="chip" data-b="${esc(b)}" aria-pressed="false">${esc(b)}</button>`).join("");
+    const L = window.GamtanQuote.LIMITS;
+    $("counts").innerHTML = [["rooms", "방"], ["baths", "화장실"], ["verandas", "베란다"]].map(([k, t]) =>
+      `<div class="step"><span>${t}</span><div class="stepc"><button type="button" data-k="${k}" data-v="-1" aria-label="${t} 하나 빼기">−</button><output id="c_${k}" class="num" aria-live="polite">${S.counts[k]}</output><button type="button" data-k="${k}" data-v="1" aria-label="${t} 하나 더">+</button></div></div>`).join("");
+    $("counts").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-k]"); if (!b) return;
+      const k = b.dataset.k, [lo, hi] = L[k];
+      S.counts[k] = Math.min(hi, Math.max(lo, S.counts[k] + +b.dataset.v));
+      $("c_" + k).textContent = S.counts[k]; update();
+    });
+    $("building").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-b]"); if (!b) return;
+      S.building = b.dataset.b;
+      for (const x of $("building").children) x.setAttribute("aria-pressed", String(x === b));
+      update();
+    });
+    $("notice").textContent = c.notice || "";
+    $("holdNote").textContent = `신청 후 ${c.hold_minutes >= 60 ? Math.round(c.hold_minutes / 60) + "시간" : c.hold_minutes + "분"} 안에 예약금을 입금해 주세요. 그동안 이 날짜는 다른 분이 예약할 수 없습니다.`;
+    if (c.contact_phone) $("qnote").innerHTML = `${c.max_py}평이 넘거나 궁금한 점은 <a href="tel:${esc(c.contact_phone.replace(/[^\d+]/g, ""))}">${esc(c.contact_phone)}</a>`;
+    for (const id of ["region", "py", "address", "name", "phone", "depositor", "agree"]) $(id).addEventListener("input", update);
+    $("name").addEventListener("input", () => { if (!$("depositor").dataset.touched) $("depositor").value = $("name").value; update(); });
+    $("depositor").addEventListener("input", () => { $("depositor").dataset.touched = "1"; });
+    $("phone").addEventListener("input", () => {
+      const d = $("phone").value.replace(/\D/g, "").slice(0, 11);
+      $("phone").value = d.length > 7 ? `${d.slice(0, 3)}-${d.slice(3, d.length - 4)}-${d.slice(-4)}` : d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d;
+    });
+  }
+
+  function input() {
+    return { area_py: Number($("py").value), rooms: S.counts.rooms, baths: S.counts.baths, verandas: S.counts.verandas, region: $("region").value, building: S.building };
+  }
+  function missing() {
+    if (!S.date) return "날짜를 골라 주세요";
+    if (!S.ampm) return "오전/오후를 골라 주세요";
+    if ($("address").value.trim().length < 5) return "주소를 입력해 주세요";
+    if (!$("name").value.trim()) return "이름을 입력해 주세요";
+    if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test($("phone").value.trim())) return "휴대폰 번호를 입력해 주세요";
+    if ($("depositor").value.trim().length < 2) return "입금자명을 입력해 주세요";
+    if (!$("agree").checked) return "개인정보 수집·이용에 동의해 주세요";
+    return "";
+  }
+  function update() {
+    if (!S.cfg) return;
+    const q = window.GamtanQuote.quote(input(), S.cfg);
+    const ready = !!$("py").value && $("region").value && S.building;
+    $("qsel").innerHTML = S.date ? `<span class="sm">예약 날짜</span><b>${fmtDate(S.date)}${S.ampm ? " " + S.ampm : ""}</b>` : `<span class="sm">달력에서 날짜를 골라 주세요</span>`;
+    if (q.ok) {
+      $("qlines").innerHTML = q.lines.map((l) => `<li><span>${esc(l.label)}</span><span>${won(l.amount)}</span></li>`).join("");
+      $("qtotal").textContent = won(q.total); $("barTotal").textContent = won(q.total);
+      $("qdeposit").textContent = won(q.deposit); $("qbalance").textContent = won(q.balance);
+      $("qdep").hidden = false;
+    } else {
+      $("qlines").innerHTML = ready ? `<li><span class="err">${esc(q.reason)}</span></li>` : `<li><span>지역·평수·건물을 넣으면 견적이 나옵니다</span></li>`;
+      $("qtotal").textContent = "–"; $("barTotal").textContent = "–"; $("qdep").hidden = true;
+    }
+    const why = q.ok ? missing() : "";
+    const ok = q.ok && !why;
+    $("submit").disabled = $("barBtn").disabled = !ok || S.sending;
+    $("submit").textContent = q.ok ? `예약금 ${won(q.deposit)}으로 예약 신청` : "예약 신청";
+    $("formErr").textContent = q.ok && why && S.date ? why : "";
+  }
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (S.sending) return;
+    S.sending = true; update(); $("formErr").textContent = "";
+    const body = { work_date: S.date, ampm: S.ampm, name: $("name").value.trim(), depositor: $("depositor").value.trim(), phone: $("phone").value.trim(), address: $("address").value.trim(), memo: $("memo").value.trim(), website: $("website").value, agree: $("agree").checked, ...input() };
+    try {
+      const j = await api("", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      remember(j.booking.code, j.token);
+      showResult(j.booking);
+      poll(j.booking.code, j.token);
+    } catch (err) {
+      $("formErr").textContent = err.message;
+      if (err.status === 409) { S.date = null; S.ampm = null; await loadMonth(S.month); drawSlots(); }
+    }
+    S.sending = false; update();
+  });
+
+  // ---------- 신청 결과 / 입금 확인 ----------
+  function remember(code, token) {
+    history.replaceState(null, "", `?r=${encodeURIComponent(code)}#t=${encodeURIComponent(token)}`);
+    try { localStorage.setItem(STORE, JSON.stringify({ code, token })); } catch (e) {}
+  }
+  function showResult(b) {
+    $("form").hidden = true; $("fatal").hidden = true;
+    const r = $("result"); r.hidden = false;
+    const when = `${fmtDate(b.work_date)} ${b.ampm}`;
+    const info = `<dl class="kv num"><dt>예약번호</dt><dd>${esc(b.code)}</dd><dt>날짜</dt><dd>${when}</dd><dt>집</dt><dd>${esc(b.region)} ${b.area_py}평 ${esc(b.building)} · 방 ${b.rooms} · 화장실 ${b.baths} · 베란다 ${b.verandas}</dd><dt>주소</dt><dd>${esc(b.address)}</dd><dt>총 견적</dt><dd>${won(b.total)}</dd><dt>예약금</dt><dd>${won(b.deposit)}</dd><dt>잔금 (작업 후)</dt><dd>${won(b.balance)}</dd></dl>`
+      + (b.promo && b.promo.items && b.promo.items.length && b.status !== "expired" && b.status !== "cancelled" ? `<div class="rpromo num"><b>${esc(b.promo.title)} — 함께 해 드립니다</b>${b.promo.items.map((x) => `<span>· ${esc(x.name)} ${x.value ? `<s class="was">${won(x.value)}</s> ` : ""}<b class="free">무료</b></span>`).join("")}</div>` : "");
+    const contact = b.contact_phone ? `<p class="sm" style="text-align:center">문의 <a href="tel:${esc(b.contact_phone.replace(/[^\d+]/g, ""))}">${esc(b.contact_phone)}</a></p>` : "";
+    if (b.status === "confirmed") {
+      r.innerHTML = `<section class="panel"><div class="state ok"><span class="tag">예약 확정</span><h2>${when} 예약이 확정되었습니다</h2><p class="sm">예약금 입금을 확인했습니다. 작업 전에 연락드리겠습니다.</p></div>${info}</section>${contact}`;
+      return;
+    }
+    if (b.status === "pending") {
+      const a = b.account || {};
+      r.innerHTML = `<section class="panel"><div class="state wait"><span class="tag"><span class="dot"></span>입금 확인 중</span><h2>예약금을 입금해 주세요</h2><p class="sm"><b class="num">${fmtTime(b.hold_until)}</b>까지 입금이 확인되면 자동으로 확정됩니다. 이 화면을 열어 두면 바로 바뀝니다.</p></div>
+        <div class="acct num">
+          <div class="row"><span>은행</span><b>${esc(a.bank)}</b></div>
+          <div class="row"><span>계좌번호</span><b>${esc(a.number)}<button type="button" class="copy" data-copy="${esc(a.number)}">복사</button></b></div>
+          <div class="row"><span>예금주</span><b>${esc(a.holder)}</b></div>
+          <div class="row big"><span>입금액</span><b>${won(b.deposit)}</b></div>
+          <div class="row big"><span>입금자명</span><b>${esc(b.depositor_name)}</b></div>
+        </div>
+        <p class="sm">입금자명과 금액이 다르면 자동 확인이 되지 않습니다.</p>${info}</section>${contact}`;
+      return;
+    }
+    if (b.status === "checking") {
+      r.innerHTML = `<section class="panel"><div class="state"><span class="tag">확인 중</span><h2>입금은 확인됐고, 날짜를 확인하고 있습니다</h2><p class="sm">입금 전에 같은 날짜에 다른 일정이 들어왔습니다. 곧 연락드려 날짜를 다시 정하거나 예약금을 돌려드리겠습니다.</p></div>${info}</section>${contact}`;
+      return;
+    }
+    const title = b.status === "cancelled" ? "취소된 예약입니다" : "입금 시간이 지나 예약이 풀렸습니다";
+    r.innerHTML = `<section class="panel"><div class="state"><span class="tag">${b.status === "cancelled" ? "취소" : "시간 초과"}</span><h2>${title}</h2><p class="sm">${b.status === "cancelled" ? "" : "이미 입금하셨다면 확인 후 연락드립니다. 아니면 다시 신청해 주세요."}</p></div>${info}<button type="button" class="gbtn" id="again">새로 예약하기</button></section>${contact}`;
+    $("again").addEventListener("click", () => { try { localStorage.removeItem(STORE); } catch (e) {} location.href = location.pathname; });
+  }
+  $("result").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-copy]"); if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.copy.replace(/[^\d-]/g, "")); b.textContent = "복사됨"; setTimeout(() => (b.textContent = "복사"), 1500); } catch (err) {}
+  });
+  let timer = null;
+  function poll(code, token) {
+    clearTimeout(timer);
+    const tick = async () => {
+      if (document.visibilityState === "visible") {
+        try { const j = await api(`?r=${encodeURIComponent(code)}&t=${encodeURIComponent(token)}`); showResult(j.booking); if (j.booking.status !== "pending") return; } catch (e) {}
+      }
+      timer = setTimeout(tick, 10000);
+    };
+    timer = setTimeout(tick, 10000);
+  }
+
+  // ---------- 시작 ----------
+  (async () => {
+    const qs = new URLSearchParams(location.search), hs = new URLSearchParams(location.hash.slice(1));
+    let code = qs.get("r"), token = hs.get("t");
+    if (!code) { try { const s = JSON.parse(localStorage.getItem(STORE) || "null"); if (s) { code = s.code; token = s.token; } } catch (e) {} }
+    if (code && token) {
+      try {
+        const j = await api(`?r=${encodeURIComponent(code)}&t=${encodeURIComponent(token)}`);
+        remember(code, token);
+        showResult(j.booking);
+        if (j.booking.status === "pending") poll(code, token);
+        if (j.booking.status === "pending" || j.booking.status === "confirmed" || j.booking.status === "checking" || qs.get("r")) return;
+      } catch (e) { try { localStorage.removeItem(STORE); } catch (x) {} }
+      $("result").hidden = true;
+    }
+    $("form").hidden = false;
+    const now = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    await loadMonth(ym(now));
+    // 이번 달에 빈 날이 없고 다음 달부터 열리면 바로 넘어간다
+    if (!Object.keys(S.days).length && S.last && shift(S.month, 1) <= ym(S.last)) await loadMonth(S.first && ym(S.first) > S.month ? ym(S.first) : shift(S.month, 1));
+    update();
+  })();
+})();
+</script>
+</body>
+</html>

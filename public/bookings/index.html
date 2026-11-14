@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>감탄 예약</title>
+<link rel="stylesheet" href="/assets/theme.css">
+<script src="/assets/shell.js" defer></script>
+<script src="/assets/quote.js"></script>
+<style>
+/* 예약 관리 (대표용). 위: 예약 목록 / 가운데: 확인이 필요한 입금 / 아래: 견적·예약 설정.
+   장부와 같은 비밀 키(이 브라우저에 저장된 장부 키)로 연다. 색·글꼴은 /assets/theme.css. */
+.wrap{max-width:1200px;margin:0 auto;padding-inline:max(20px,env(safe-area-inset-left,0px)) max(20px,env(safe-area-inset-right,0px));padding-block:24px 72px;display:grid;gap:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+h2{font-size:1.1rem;margin:0;font-weight:700}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:grid;gap:14px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);min-width:0}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:8px 16px;flex-wrap:wrap}
+.sm{font-size:.85rem;color:var(--muted);margin:0}
+.status{font-size:.82rem;color:var(--muted);min-height:1.2em}
+.status.err{color:var(--warn)}
+.banner{border-radius:12px;padding:14px 16px;background:var(--warn-soft);color:var(--ink)}
+.link{color:var(--accent);font-weight:600}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:.88rem;font-weight:600;border:1px solid var(--line2);background:var(--card);color:var(--muted);border-radius:8px;padding:5px 12px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.counts{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.counts b{color:var(--ink)}
+.tw{overflow-x:auto}
+table.list{width:100%;border-collapse:collapse;font-size:.9rem;min-width:860px}
+.list th{font-size:.78rem;font-weight:600;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.list td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.list td.r,.list th.r{text-align:right}
+.list td .sub{display:block;font-size:.78rem;color:var(--muted)}
+.list tr.dim td{color:var(--muted)}
+.st{display:inline-block;font-size:.75rem;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--cell)}
+.st.confirmed{background:var(--ink);color:#fff}
+.st.pending{background:var(--amber-soft);color:var(--amber-ink)}
+.st.conflict{background:var(--warn-soft);color:var(--warn)}
+.st.expired,.st.cancelled{background:none;border:1px solid var(--line2);color:var(--muted)}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.sbtn{font:inherit;font-size:.8rem;font-weight:600;height:30px;border:1px solid var(--line2);border-radius:7px;background:var(--card);color:var(--ink);padding:0 10px;cursor:pointer;white-space:nowrap}
+.sbtn:hover{background:var(--cell)}
+.sbtn.warn{color:var(--warn)}
+.sbtn.arm{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}
+.sbtn:disabled{opacity:.4;cursor:default}
+.dep{display:grid;gap:8px}
+.depi{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}
+.depi pre{margin:0;font:inherit;font-size:.82rem;white-space:pre-wrap;word-break:break-all;color:var(--muted)}
+.depi .h{font-weight:700}
+.depi select{height:30px;font-size:.8rem;padding:0 6px;max-width:260px}
+form.cfg{display:grid;gap:16px}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 12px}
+.fld{display:grid;gap:4px;min-width:0}
+.fld > span{font-size:.75rem;color:var(--muted)}
+fieldset{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0;display:grid;gap:10px}
+legend{font-size:.85rem;font-weight:700;padding:0 6px}
+input,select,textarea{font:inherit;font-size:.95rem;border:1px solid var(--line2);border-radius:8px;background:var(--card);color:var(--ink);padding:0 10px;min-width:0;width:100%}
+input,select{height:38px}
+textarea{padding:8px 10px;min-height:70px;resize:vertical}
+.pbtn{font:inherit;font-weight:600;height:38px;border:0;border-radius:8px;background:var(--ink);color:#fff;padding:0 18px;cursor:pointer;justify-self:start}
+.wk{display:flex;gap:6px;flex-wrap:wrap}
+.wk label{display:flex;gap:4px;align-items:center;font-size:.88rem}
+.wk input{width:16px;height:16px}
+.prev{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="pagetitle">예약</h1>
+    <a class="link" href="/reserve/" target="_blank" rel="noopener">고객 예약 페이지 열기 ↗</a>
+  </header>
+
+  <div class="banner" id="locked" hidden>예약 화면은 장부와 같은 비밀 주소로 열립니다. 장부 주소(끝에 <b>#k=</b>가 붙은 주소)를 한 번 연 브라우저에서 다시 열어주세요. 또는 장부 주소의 <b>/ledger/</b>를 <b>/bookings/</b>로 바꿔 여세요.</div>
+
+  <main id="app" hidden style="display:grid;gap:18px">
+    <section class="panel" aria-labelledby="bh">
+      <div class="phead">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h2 id="bh">예약 목록</h2>
+          <div class="tabs" id="tabs" role="group" aria-label="보기"><button type="button" data-f="up" aria-pressed="true">다가오는</button><button type="button" data-f="all" aria-pressed="false">전체</button></div></div>
+        <div class="counts num" id="counts"></div>
+      </div>
+      <div class="tw"><table class="list num"><thead><tr><th>작업일</th><th>고객</th><th>집</th><th class="r">견적</th><th class="r">예약금</th><th>상태</th><th>작업</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <span class="status" id="bStatus" role="status"></span>
+      <p class="sm">입금 문자가 오면 입금자명·금액으로 자동 확정되고 정산 캘린더에 <b>[감탄예약]</b> 일정이 생깁니다. 정산 페이지는 이 일정을 아직 계산하지 않습니다.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="dh">
+      <div class="phead"><h2 id="dh">확인이 필요한 입금</h2><span class="sm">최근 14일 · 자동으로 짝을 찾지 못한 입금 알림</span></div>
+      <div class="dep" id="deps"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="ch">
+      <div class="phead"><h2 id="ch">견적·예약 설정</h2><span class="status" id="cStatus" role="status"></span></div>
+      <form class="cfg" id="cfg" novalidate autocomplete="off">
+        <fieldset><legend>요금</legend>
+          <div class="cg">
+            <label class="fld"><span>평당 요금 (원)</span><input data-k="per_py" type="number" min="0" step="500"></label>
+            <label class="fld"><span>최소 금액 (원)</span><input data-k="min_total" type="number" min="0" step="1000"></label>
+            <label class="fld"><span>최소 평수</span><input data-k="min_py" type="number" min="1"></label>
+            <label class="fld"><span>최대 평수 (넘으면 상담)</span><input data-k="max_py" type="number" min="1"></label>
+            <label class="fld"><span>금액 올림 단위 (원)</span><input data-k="round_to" type="number" min="1"></label>
+          </div>
+          <div class="cg">
+            <label class="fld"><span>기본 포함 방 (개)</span><input data-k="included.rooms" type="number" min="0"></label>
+            <label class="fld"><span>기본 포함 화장실</span><input data-k="included.baths" type="number" min="0"></label>
+            <label class="fld"><span>기본 포함 베란다</span><input data-k="included.verandas" type="number" min="0"></label>
+            <label class="fld"><span>방 추가 1개당 (원)</span><input data-k="extra.rooms" type="number" min="0" step="1000"></label>
+            <label class="fld"><span>화장실 추가 1개당</span><input data-k="extra.baths" type="number" min="0" step="1000"></label>
+            <label class="fld"><span>베란다 추가 1개당</span><input data-k="extra.verandas" type="number" min="0" step="1000"></label>
+          </div>
+          <label class="fld"><span>지역과 출장비 (한 줄에 "지역=금액", 예: 거제=30000)</span><textarea id="regions" rows="5"></textarea></label>
+          <label class="fld"><span>건물 유형 (쉼표로 구분)</span><input id="buildings"></label>
+        </fieldset>
+        <fieldset><legend>혜택 (예약 페이지 맨 위·견적 칸에 표시, 신청 순간 적용된 혜택은 예약과 캘린더 메모에 남음)</legend>
+          <div class="cg">
+            <label class="fld"><span>혜택 켜기</span><select id="promo_enabled"><option value="1">켜기</option><option value="0">끄기</option></select></label>
+            <label class="fld"><span>혜택 이름</span><input data-k="promo.title" maxlength="40"></label>
+            <label class="fld"><span>신청 마감일 (비우면 기한 없음)</span><input data-k="promo.until" type="date"></label>
+            <label class="fld"><span>선착순 건수 (0이면 제한 없음)</span><input data-k="promo.limit" type="number" min="0"></label>
+          </div>
+          <label class="fld"><span>무료 서비스 (한 줄에 "이름=정가", 화면에 정가를 긋고 "무료" 표시. 정가 0이면 "무료"만)</span><textarea id="promo_items" rows="4"></textarea></label>
+          <p class="sm" id="promoNow"></p>
+          <p class="sm">정가는 그 서비스를 따로 받는 실제 가격이어야 합니다(표시광고법). 마감일·선착순도 실제로 지켜지는 값만 넣으세요.</p>
+        </fieldset>
+        <fieldset><legend>장점 (예약 페이지 혜택 아래 카드, 사실인 것만)</legend>
+          <label class="fld"><span>한 줄에 "제목 | 설명"</span><textarea id="points" rows="6"></textarea></label>
+        </fieldset>
+        <fieldset><legend>예약</legend>
+          <div class="cg">
+            <label class="fld"><span>예약금 (원)</span><input data-k="deposit" type="number" min="0" step="1000"></label>
+            <label class="fld"><span>입금 대기 시간 (분)</span><input data-k="hold_minutes" type="number" min="10"></label>
+            <label class="fld"><span>오늘부터 며칠 뒤부터</span><input data-k="lead_days" type="number" min="0"></label>
+            <label class="fld"><span>오늘부터 며칠 뒤까지</span><input data-k="max_days" type="number" min="1"></label>
+            <label class="fld"><span>마감 기준</span><select id="slot_mode"><option value="day">일정 있는 날은 하루 전체 마감</option><option value="ampm">오전·오후 따로</option></select></label>
+          </div>
+          <div class="fld"><span>쉬는 요일</span><div class="wk" id="wk"></div></div>
+          <label class="fld"><span>예약 페이지 안내 문구 (환불 규정 등)</span><textarea data-k="notice" maxlength="1000"></textarea></label>
+          <label class="fld"><span>예약 페이지 문의 전화번호 (실제 번호만, 비우면 안 보임)</span><input data-k="contact_phone" maxlength="20"></label>
+        </fieldset>
+        <fieldset><legend>입금 계좌 (고객에게는 예약 신청 뒤에만 보임)</legend>
+          <div class="cg">
+            <label class="fld"><span>은행</span><input data-k="account.bank" maxlength="40"></label>
+            <label class="fld"><span>계좌번호</span><input data-k="account.number" maxlength="40"></label>
+            <label class="fld"><span>예금주</span><input data-k="account.holder" maxlength="40"></label>
+            <label class="fld"><span>입금 문자 계좌 확인 (문자에 보이는 끝자리, 쉼표 구분)</span><input id="account_match" placeholder="예: 123456"></label>
+          </div>
+          <p class="sm">계좌번호를 넣기 전까지 고객은 예약 신청을 할 수 없습니다. 계좌 확인 칸을 비우면 입금자명·금액만으로 확인합니다.</p>
+        </fieldset>
+        <div class="prev num" id="preview"></div>
+        <button class="pbtn" type="submit">설정 저장</button>
+      </form>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const KEY_STORE = "gamtan.ledgerKey"; // 장부와 같은 키
+  window.addEventListener("hashchange", () => { if (/k=/.test(location.hash)) location.reload(); });
+  const $ = (id) => document.getElementById(id);
+  const won = (n) => (Math.round(n) || 0).toLocaleString("ko-KR") + "원";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+  const md = (d) => { const [y, m, dd] = d.split("-").map(Number); return `${m}/${dd} (${DOW[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()]})`; };
+  const tm = (iso) => { if (!iso) return ""; const k = new Date(Date.parse(iso) + 9 * 3600e3).toISOString(); return `${+k.slice(5, 7)}/${+k.slice(8, 10)} ${k.slice(11, 16)}`; };
+  const ST = { pending: "입금 대기", confirmed: "확정", expired: "시간 초과", cancelled: "취소", conflict: "날짜 겹침" };
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+
+  const m = location.hash.match(/k=([A-Za-z0-9_-]{20,})/);
+  let key;
+  try { if (m) localStorage.setItem(KEY_STORE, m[1]); key = m ? m[1] : localStorage.getItem(KEY_STORE); } catch (e) { key = m ? m[1] : null; }
+  if (m) history.replaceState(null, "", location.pathname);
+  if (!key) { $("locked").hidden = false; return; }
+
+  async function api(method, body) {
+    const r = await fetch("/api/booking-admin", { method, headers: { "x-ledger-key": key, ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    let j = {};
+    try { j = await r.json(); } catch (e) {}
+    if (r.status === 401) { $("locked").hidden = false; $("app").hidden = true; throw new Error("unauthorized"); }
+    if (!r.ok) throw new Error(j.error || "저장 실패");
+    return j;
+  }
+
+  let D = { bookings: [], deposits: [], config: null };
+  let filter = "up";
+
+  async function load() {
+    try { D = await api("GET"); } catch (e) { if (e.message !== "unauthorized") { $("bStatus").textContent = "불러오지 못했습니다: " + e.message; $("bStatus").classList.add("err"); } return; }
+    $("app").hidden = false;
+    drawList(); drawDeps(); fillCfg();
+  }
+
+  // ---------- 예약 목록 ----------
+  function drawList() {
+    const list = D.bookings.filter((b) => filter === "all" || (b.work_date >= today && b.status !== "expired" && b.status !== "cancelled"));
+    const c = (s) => D.bookings.filter((b) => b.status === s && b.work_date >= today).length;
+    $("counts").innerHTML = `<span>확정 <b>${c("confirmed")}</b></span><span>입금 대기 <b>${c("pending")}</b></span>${c("conflict") ? `<span>날짜 겹침 <b style="color:var(--warn)">${c("conflict")}</b></span>` : ""}`;
+    if (!list.length) { $("rows").innerHTML = `<tr><td colspan="7" class="sm">예약이 없습니다.</td></tr>`; return; }
+    $("rows").innerHTML = list.map((b) => {
+      const dim = b.status === "expired" || b.status === "cancelled";
+      const acts = [];
+      if (b.status === "pending" || b.status === "expired" || b.status === "conflict") acts.push(`<button type="button" class="sbtn" data-a="confirm" data-id="${b.id}">입금 확인됨 → 확정</button>`);
+      if (b.status === "confirmed" && !b.gcal_event_id) acts.push(`<button type="button" class="sbtn" data-a="sync" data-id="${b.id}">캘린더 다시 등록</button>`);
+      if (b.status !== "cancelled" && b.status !== "expired") acts.push(`<button type="button" class="sbtn warn" data-a="cancel" data-id="${b.id}">취소</button>`);
+      const paid = b.paid_amount ? `<span class="sub">${won(b.paid_amount)} ${tm(b.paid_at)}</span>` : b.status === "pending" ? `<span class="sub">~${tm(b.hold_until)}</span>` : "";
+      return `<tr class="${dim ? "dim" : ""}">
+        <td><b>${md(b.work_date)}</b> ${esc(b.ampm)}<span class="sub">${esc(b.code)}</span></td>
+        <td>${esc(b.customer_name)}<span class="sub">${esc(b.phone)}${b.depositor_name !== b.customer_name ? ` · 입금자 ${esc(b.depositor_name)}` : ""}</span></td>
+        <td>${esc(b.region)} ${b.area_py}평 ${esc(b.building)}<span class="sub">방${b.rooms} 화${b.baths} 베${b.verandas} · ${esc(b.address)}</span>${b.memo ? `<span class="sub">요청: ${esc(b.memo)}</span>` : ""}</td>
+        <td class="r">${won(b.total)}</td>
+        <td class="r">${won(b.deposit)}${paid}</td>
+        <td><span class="st ${b.status}">${ST[b.status] || b.status}</span>${b.promo ? `<span class="sub">혜택: ${esc(b.promo.items.map((x) => x.name).join(", "))}</span>` : ""}${b.status === "confirmed" ? `<span class="sub">${b.gcal_event_id ? "캘린더 등록됨" : "캘린더 미등록"}${b.confirmed_by === "manual" ? " · 수동" : ""}</span>` : ""}</td>
+        <td><div class="acts">${acts.join("")}</div></td></tr>`;
+    }).join("");
+  }
+  $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-f]"); if (!b) return; filter = b.dataset.f; for (const x of $("tabs").children) x.setAttribute("aria-pressed", String(x === b)); drawList(); });
+
+  let armed = null;
+  async function act(body, btn) {
+    btn.disabled = true; $("bStatus").classList.remove("err"); $("bStatus").textContent = "처리 중…";
+    try {
+      const j = await api("POST", body);
+      $("bStatus").textContent = j.calendarError ? "처리됨. 캘린더 등록 실패: " + j.calendarError : "처리됨";
+      if (j.calendarError) $("bStatus").classList.add("err");
+      await load();
+    } catch (e) { $("bStatus").textContent = e.message; $("bStatus").classList.add("err"); btn.disabled = false; }
+  }
+  $("rows").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-a]"); if (!b) return;
+    if (b.dataset.a === "cancel" && armed !== b) { // 두 번 눌러 확인
+      if (armed) { armed.classList.remove("arm"); armed.textContent = "취소"; }
+      armed = b; b.classList.add("arm"); b.textContent = "한 번 더 누르면 취소"; return;
+    }
+    armed = null;
+    act({ action: b.dataset.a, id: b.dataset.id }, b);
+  });
+
+  // ---------- 입금 알림 ----------
+  const DS = { unmatched: "짝 없음", ambiguous: "후보 여러 건", conflict: "날짜 겹침", ignored: "계좌 불일치" };
+  function drawDeps() {
+    const list = D.deposits.filter((d) => d.state !== "matched");
+    const open = D.bookings.filter((b) => ["pending", "expired", "conflict"].includes(b.status));
+    if (!list.length) { $("deps").innerHTML = `<p class="sm">확인이 필요한 입금이 없습니다.</p>`; return; }
+    $("deps").innerHTML = list.map((d) => `<div class="depi">
+      <div><span class="h num">${won(d.amount)}</span> <span class="st ${d.state === "conflict" ? "conflict" : ""}">${DS[d.state] || d.state}</span> <span class="sm">${tm(d.received_at)}${d.note ? " · " + esc(d.note) : ""}</span><pre>${esc(d.text)}</pre></div>
+      ${d.state === "conflict" ? "" : `<div class="acts"><select aria-label="연결할 예약" data-dep="${d.id}"><option value="">예약에 연결…</option>${open.map((b) => `<option value="${b.id}">${md(b.work_date)} ${esc(b.ampm)} ${esc(b.depositor_name)} ${won(b.deposit)}</option>`).join("")}</select><button type="button" class="sbtn" data-link="${d.id}">연결·확정</button></div>`}
+    </div>`).join("");
+  }
+  $("deps").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-link]"); if (!b) return;
+    const sel = $("deps").querySelector(`select[data-dep="${b.dataset.link}"]`);
+    if (!sel.value) { sel.focus(); return; }
+    act({ action: "link", id: sel.value, deposit_id: b.dataset.link }, b);
+  });
+
+  // ---------- 설정 ----------
+  const getK = (o, k) => k.split(".").reduce((a, x) => (a ? a[x] : undefined), o);
+  const setK = (o, k, v) => { const p = k.split("."); const last = p.pop(); let t = o; for (const x of p) t = t[x] = t[x] || {}; t[last] = v; };
+  function fillCfg() {
+    const c = D.config;
+    for (const el of $("cfg").querySelectorAll("[data-k]")) el.value = getK(c, el.dataset.k) ?? "";
+    $("regions").value = c.regions.map((r) => `${r.name}=${r.fee}`).join("\n");
+    $("buildings").value = c.buildings.join(", ");
+    $("slot_mode").value = c.slot_mode;
+    $("account_match").value = c.account_match.join(", ");
+    $("promo_enabled").value = c.promo.enabled ? "1" : "0";
+    $("promo_items").value = c.promo.items.map((x) => `${x.name}=${x.value}`).join("\n");
+    $("points").value = c.points.map((x) => `${x.title} | ${x.body}`).join("\n");
+    const p = D.promo;
+    $("promoNow").innerHTML = p ? (p.active ? `<b>지금 적용 중</b>${p.left !== null ? ` · 선착순 남은 ${p.left}건` : ""}${p.worth ? ` · 혜택 합계 ${won(p.worth)}` : ""}` : "지금은 적용 안 됨 (꺼짐·기한 지남·선착순 마감)") : "";
+    $("wk").innerHTML = DOW.map((d, i) => `<label><input type="checkbox" value="${i}"${c.closed_weekdays.includes(i) ? " checked" : ""}>${d}</label>`).join("");
+    preview();
+  }
+  function readCfg() {
+    const out = {};
+    for (const el of $("cfg").querySelectorAll("[data-k]")) setK(out, el.dataset.k, el.type === "number" ? (el.value === "" ? null : Number(el.value)) : el.value);
+    out.regions = $("regions").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const [n, f] = l.split("="); return { name: (n || "").trim(), fee: Number((f || "0").replace(/[^\d]/g, "")) || 0 }; });
+    out.buildings = $("buildings").value.split(",").map((x) => x.trim()).filter(Boolean);
+    out.slot_mode = $("slot_mode").value;
+    out.account_match = $("account_match").value.split(",").map((x) => x.trim()).filter(Boolean);
+    out.closed_weekdays = [...$("wk").querySelectorAll("input:checked")].map((x) => +x.value);
+    out.promo = { ...(out.promo || {}), enabled: $("promo_enabled").value === "1",
+      items: $("promo_items").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.lastIndexOf("="); return i < 0 ? { name: l, value: 0 } : { name: l.slice(0, i).trim(), value: Number(l.slice(i + 1).replace(/[^\d]/g, "")) || 0 }; }) };
+    if (out.promo.limit === null) delete out.promo.limit;
+    out.points = $("points").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.indexOf("|"); return i < 0 ? { title: l, body: "" } : { title: l.slice(0, i).trim(), body: l.slice(i + 1).trim() }; });
+    return out;
+  }
+  function preview() {
+    const c = window.GamtanQuote.merge(readCfg(), D.config);
+    const ex = (py, r, b, v) => { const q = window.GamtanQuote.quote({ area_py: py, rooms: r, baths: b, verandas: v, region: c.regions[0].name, building: c.buildings[0] }, c); return q.ok ? won(q.total) : q.reason; };
+    $("preview").innerHTML = `미리보기 (${esc(c.regions[0].name)}): 9평 원룸 방1·화1 <b>${ex(9, 1, 1, 0)}</b> · 24평 방3·화2·베2 <b>${ex(24, 3, 2, 2)}</b> · 33평 방3·화2·베2 <b>${ex(33, 3, 2, 2)}</b> · 34평 방4·화2·베3 <b>${ex(34, 4, 2, 3)}</b> · 예약금 ${won(c.deposit)}`;
+  }
+  $("cfg").addEventListener("input", preview);
+  $("cfg").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("cStatus").classList.remove("err"); $("cStatus").textContent = "저장 중…";
+    try { const j = await api("PUT", { type: "config", data: readCfg() }); D.config = j.config; fillCfg(); $("cStatus").textContent = "저장됨 (형식이 맞지 않는 값은 이전 값 유지)"; }
+    catch (err) { $("cStatus").textContent = err.message; $("cStatus").classList.add("err"); }
+  });
+
+  load();
+  setInterval(() => { if (document.visibilityState === "visible" && !$("cfg").contains(document.activeElement)) load(); }, 5 * 60e3);
+})();
+</script>
+</body>
+</html>

@@ -2,9 +2,30 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
+  # PR 미리보기는 빌드하지 않는다 (크레딧 절약, 2026-11-14 대표 결정). 확인은 로컬 node tools/dev-server.js.
+  # 종료 코드 0 = 건너뜀. 운영(production) 배포는 그대로 빌드된다.
+  ignore = "[ \"$CONTEXT\" = \"deploy-preview\" ]"
 
 [functions]
   node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/booking"
+  to = "/.netlify/functions/booking"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/booking-admin"
+  to = "/.netlify/functions/booking-admin"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/deposit"
+  to = "/.netlify/functions/deposit"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/api/events"

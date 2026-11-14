@@ -51,6 +51,19 @@ function makeCalendar(env, fetchImpl) {
       const q = new URLSearchParams({ timeMin: `${date}T00:00:00+09:00`, timeMax: `${date}T23:59:59+09:00`, singleEvents: "true", maxResults: "100", timeZone: "Asia/Seoul" });
       return ((await call(`${base}?${q}`)).items || []).filter((e) => e.status !== "cancelled");
     },
+    // 기간 안 모든 일정 (취소 제외). start·end는 YYYY-MM-DD, end 포함
+    async eventsBetween(start, end) {
+      const out = [];
+      let pageToken = "";
+      for (let i = 0; i < 5; i++) {
+        const q = new URLSearchParams({ timeMin: `${start}T00:00:00+09:00`, timeMax: `${end}T23:59:59+09:00`, singleEvents: "true", maxResults: "250", timeZone: "Asia/Seoul" });
+        if (pageToken) q.set("pageToken", pageToken);
+        const j = await call(`${base}?${q}`);
+        out.push(...(j.items || []).filter((e) => e.status !== "cancelled"));
+        if (!(pageToken = j.nextPageToken)) break;
+      }
+      return out;
+    },
     // 글자 검색 (주문번호 찾기): 지난 120일 ~ 앞으로 365일
     async search(text) {
       const now = Date.now();
