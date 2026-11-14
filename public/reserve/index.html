@@ -33,13 +33,15 @@ h2 .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radiu
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .dow{font-size:.75rem;color:var(--muted);text-align:center;padding:2px 0 4px;font-weight:600}
 .d{font:inherit;aspect-ratio:1/1;min-height:40px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);display:grid;place-content:center;gap:0;cursor:pointer;line-height:1.1;padding:0;transition:background .12s ease-out}
-.d b{font-size:1rem;font-weight:700}
+.d b{font-size:1rem;font-weight:700;white-space:nowrap}
+.d b i{font-style:normal;font-size:.72em;font-weight:600;margin-left:1px}
+@media (max-width:400px){.panel{padding:14px 12px 16px}.cal{gap:3px}.d{aspect-ratio:auto;height:46px;min-height:0;min-width:0;border-radius:8px}.d b{font-size:.86rem;letter-spacing:-.03em}.d b i{font-size:.75em;margin-left:0}.d small{font-size:.58rem}}
 .d small{font-size:.62rem;color:var(--muted);font-weight:600}
 .d:hover:not(:disabled){background:var(--amber-tint);border-color:#f1c56e}
 .d:disabled{background:var(--cell);border-color:var(--cell);color:#b5b5b5;cursor:default}
 .d:disabled small{color:#bdbdbd}
 .d.blank{visibility:hidden}
-.d[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.d[aria-pressed="true"],.d[aria-pressed="true"]:hover:not(:disabled){background:var(--ink);border-color:var(--ink);color:#fff}
 .d[aria-pressed="true"] small{color:#d6d6d6}
 .slots{display:flex;gap:8px;flex-wrap:wrap}
 .seg{font:inherit;font-weight:600;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px}
@@ -281,16 +283,16 @@ details p{margin:6px 0 0}
   }
   function drawCal() {
     const [y, mo] = S.month.split("-").map(Number);
-    const lead = (new Date(Date.UTC(y, mo - 1, 1)).getUTCDay() + 6) % 7;
+    const lead = new Date(Date.UTC(y, mo - 1, 1)).getUTCDay(); // 일요일 시작
     const n = new Date(Date.UTC(y, mo, 0)).getUTCDate();
-    let h = ["월", "화", "수", "목", "금", "토", "일"].map((d) => `<div class="dow">${d}</div>`).join("");
+    let h = DOW.map((d) => `<div class="dow">${d}</div>`).join("");
     for (let i = 0; i < lead; i++) h += `<span class="d blank"></span>`;
     for (let d = 1; d <= n; d++) {
       const ds = `${S.month}-${String(d).padStart(2, "0")}`;
       const open = S.days[ds];
       const past = S.first && ds < S.first, far = S.last && ds > S.last;
       const sub = open ? (open.length === 2 ? "가능" : open[0]) : past || far ? "" : "마감";
-      h += `<button type="button" class="d" data-d="${ds}"${open ? "" : " disabled"} aria-pressed="${S.date === ds}" aria-label="${fmtDate(ds)} ${open ? "예약 가능" : "예약 불가"}"><b>${d}</b><small>${sub}</small></button>`;
+      h += `<button type="button" class="d" data-d="${ds}"${open ? "" : " disabled"} aria-pressed="${S.date === ds}" aria-label="${fmtDate(ds)} ${open ? "예약 가능" : "예약 불가"}"><b>${d}<i>${DOW[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()]}</i></b><small>${sub}</small></button>`;
     }
     $("cal").innerHTML = h;
     $("prev").disabled = !S.first || S.month <= ym(S.first);
