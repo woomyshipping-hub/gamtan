@@ -82,7 +82,7 @@ http.createServer(async (req, res) => {
   }
   if (u.pathname === "/__state") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ s, events })); }
   let p = path.join(ROOT, "public", u.pathname); if (p.endsWith("/")) p += "index.html";
-  fs.readFile(p, (e, d) => { if (e) { res.writeHead(404); return res.end(); } res.writeHead(200, { "Content-Type": TYPES[path.extname(p)] || "application/octet-stream" }); res.end(d); });
+  fs.readFile(p, (e, d) => { if (e) { res.writeHead(404); return res.end(); } res.writeHead(200, { "Content-Type": TYPES[path.extname(p)] || "application/octet-stream", "Cache-Control": "no-store" }); res.end(d); });
 }).listen(PORT, "0.0.0.0", () => {
   // 같은 와이파이의 휴대폰·다른 컴퓨터에서 열 주소 (이 컴퓨터의 내부 IP)
   const lan = Object.values(require("os").networkInterfaces()).flat()
@@ -92,7 +92,13 @@ http.createServer(async (req, res) => {
     `  관리 화면   http://${host}:${PORT}/bookings/#k=${KEY}`,
     `  입금 흉내   http://${host}:${PORT}/__dev`,
   ].join("\n");
-  console.log(`\n감탄 로컬 서버 (가짜 데이터, 끄려면 Ctrl+C)\n\n이 컴퓨터에서:\n${show("localhost")}`);
+  // 지금 어떤 버전인지 (화면이 예전 그대로면 git pull이 안 된 것)
+  let ver = "알 수 없음";
+  try {
+    const git = (c) => require("child_process").execSync(`git ${c}`, { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    ver = `${git("rev-parse --abbrev-ref HEAD")} @ ${git("log -1 --format=%h·%cd·%s --date=format:%m/%d_%H:%M")}`;
+  } catch (e) {}
+  console.log(`\n감탄 로컬 서버 (가짜 데이터, 끄려면 Ctrl+C)\n버전: ${ver}\n\n이 컴퓨터에서:\n${show("localhost")}`);
   for (const ip of lan) console.log(`\n같은 와이파이의 휴대폰에서 (${ip}):\n${show(ip)}`);
   if (!lan.length) console.log("\n(와이파이 주소를 찾지 못했습니다. 네트워크 연결을 확인하세요)");
   console.log("\n휴대폰에서 안 열리면: 맥 시스템 설정 → 네트워크 → 방화벽에서 node 연결 허용, 휴대폰이 같은 와이파이인지 확인\n");
