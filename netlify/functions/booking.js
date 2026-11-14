@@ -41,6 +41,7 @@ function view(b, cfg) {
     customer_name: b.customer_name, depositor_name: b.depositor_name,
     lines: (b.quote && b.quote.lines) || [], total: b.total, deposit: b.deposit, balance: b.total - b.deposit,
     hold_until: b.hold_until, paid_at: b.paid_at || null,
+    promo: b.promo || null,
     account: waiting ? cfg.account : null,
     contact_phone: cfg.contact_phone || null,
   };
@@ -102,7 +103,8 @@ function makeHandler({ env = process.env, fetchImpl = fetch, now = () => Date.no
           const [events, active] = await Promise.all([cal().eventsBetween(a, z), store.active(a, z)]);
           days = B.availability(cfg, events, active, a, z, t);
         }
-        return reply(200, { config: Q.publicConfig(cfg), today: range.today, first: range.first, last: range.last, days });
+        const promo = Q.promoState(cfg, range.today, cfg.promo.enabled && cfg.promo.limit ? await store.promoUsed() : 0);
+        return reply(200, { config: Q.publicConfig(cfg), promo, today: range.today, first: range.first, last: range.last, days });
       }
 
       if (event.httpMethod !== "POST") return reply(405, { error: "지원하지 않는 요청" });
@@ -132,6 +134,10 @@ function makeHandler({ env = process.env, fetchImpl = fetch, now = () => Date.no
       const [events, active] = await Promise.all([cal().eventsOn(row.work_date), store.active(row.work_date, row.work_date)]);
       const busy = B.busyMap(events, active);
       if (!B.slotOpen(busy.get(row.work_date), row.slot)) return reply(409, { error: "방금 예약이 찬 날짜입니다. 다른 날짜를 골라 주세요" });
+
+      // 혜택: 신청 순간에 적용되면 예약에 그대로 남긴다 (나중에 혜택을 바꿔도 이 예약은 유지)
+      const ps = Q.promoState(cfg, range.today, cfg.promo.enabled && cfg.promo.limit ? await store.promoUsed() : 0);
+      row.promo = ps.active ? { title: ps.title, items: ps.items } : null;
 
       const token = crypto.randomBytes(18).toString("base64url");
       let saved;

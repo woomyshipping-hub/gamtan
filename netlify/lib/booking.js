@@ -94,6 +94,8 @@ function makeStore(rest) {
     expireStale: (nowIso) => rest(`bookings?status=eq.pending&hold_until=lt.${nowIso}`, { method: "PATCH", body: { status: "expired", updated_at: nowIso } }),
     active: (from, to) => rest(`bookings?work_date=gte.${from}&work_date=lte.${to}&status=in.(pending,confirmed)&select=id,work_date,slot,status,hold_until`),
     pending: () => rest("bookings?status=eq.pending&select=id,phone,depositor_name,deposit,hold_until"),
+    // 혜택(선착순)을 받은 입금 대기·확정 예약 수
+    async promoUsed() { return (await rest("bookings?promo=not.is.null&status=in.(pending,confirmed)&select=id")).length; },
     async insert(row) { const r = await rest(`bookings?select=${B_COLS}`, { method: "POST", prefer: "return=representation", body: row }); return r[0]; },
     async byCode(code) { const r = await rest(`bookings?code=eq.${encodeURIComponent(code)}&select=${B_COLS}`); return r[0] || null; },
     async byId(id) { const r = await rest(`bookings?id=eq.${id}&select=${B_COLS}`); return r[0] || null; },
@@ -131,6 +133,7 @@ function calendarEvent(b) {
       `주소: ${b.address}`,
       `조건: 방 ${b.rooms} · 화장실 ${b.baths} · 베란다 ${b.verandas}`,
       `견적: ${won(b.total)} — ${paid}, 잔금 ${won(Math.max(0, b.total - (b.paid_amount || 0)))}`,
+      b.promo && b.promo.items && b.promo.items.length ? `혜택: ${b.promo.items.map((x) => x.name).join(", ")} (${b.promo.title})` : null,
       b.memo ? `요청: ${b.memo}` : null,
       "구분: 감탄 예약 페이지 (직접 영업)",
     ].filter(Boolean).join("\n"),

@@ -17,6 +17,7 @@ const store = {
   expireStale: async (iso) => { for (const b of s.bookings) if (b.status === "pending" && b.hold_until < iso) b.status = "expired"; },
   active: async (f, t) => s.bookings.filter((b) => act(b) && b.work_date >= f && b.work_date <= t),
   pending: async () => s.bookings.filter((b) => b.status === "pending"),
+  promoUsed: async () => s.bookings.filter((b) => b.promo && (b.status === "pending" || b.status === "confirmed")).length,
   insert: async (row) => { const b = { id: crypto.randomUUID(), created_at: new Date().toISOString(), ...row }; if (clash(b)) throw Object.assign(new Error(), { status: 409 }); s.bookings.push(b); return { ...b }; },
   byCode: async (c) => s.bookings.find((x) => x.code === c) || null, byId: async (id) => s.bookings.find((x) => x.id === id) || null,
   candidates: async (since) => s.bookings.filter((b) => (b.status === "pending" || b.status === "expired") && b.hold_until > since),

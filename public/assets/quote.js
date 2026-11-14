@@ -28,6 +28,28 @@
     closed_weekdays: [],      // 0=일 … 6=토
     notice: "",               // 예약 페이지 안내 문구 (환불 규정 등)
     contact_phone: "",        // 예약 페이지에 보일 전화번호 (실제 번호만)
+    // 예약 혜택 (임시 문구·금액. "○원 상당"은 실제 따로 받는 가격이 있어야 쓸 수 있다 — 표시광고법)
+    promo: {
+      enabled: true,
+      title: "온라인 예약 혜택",
+      until: "2026-12-31",     // 이 날짜(한국 시간)까지 신청한 예약. 비우면 기한 없음
+      limit: 20,               // 선착순 건수 (입금 대기·확정 예약 기준). 0이면 제한 없음
+      items: [                 // value 0이면 "○원 상당"을 표시하지 않음
+        { name: "피톤치드 연무 시공", value: 50000 },
+        { name: "욕실 실리콘 곰팡이 제거 (부분)", value: 30000 },
+        { name: "주방·욕실 스팀 살균 소독", value: 30000 },
+        { name: "입주 후 7일 무료 재방문 A/S", value: 0 },
+      ],
+    },
+    // 예약 페이지 장점 (사실만. 대표 확인 후 뺄 것은 관리 화면에서 지운다)
+    points: [
+      { title: "바로 나오는 정찰 견적", body: "평수와 방 개수만 넣으면 가격이 바로 나옵니다. 현장에서 금액을 바꾸지 않습니다." },
+      { title: "대표가 직접 시공", body: "하청·재하청 없이 같은 팀이 처음부터 끝까지 맡습니다." },
+      { title: "작업 전후 사진 보고", body: "끝나면 구역별 전후 사진을 보내 드립니다." },
+      { title: "입주 후 7일 A/S", body: "놓친 곳이 있으면 7일 안에 다시 와서 해 드립니다." },
+      { title: "입금 즉시 예약 확정", body: "예약금이 들어오면 화면에 바로 확정이 뜹니다. 전화를 기다리지 않아도 됩니다." },
+      { title: "부산·경남 출장", body: "지역별 출장비까지 견적에 미리 넣어 보여 드립니다." },
+    ],
     // 아래는 고객에게 설정으로 내려보내지 않는다. 계좌는 예약 신청 뒤에만 보여 준다.
     account: { bank: "", number: "", holder: "" },
     account_match: [],        // 입금 문자에 이 글자 중 하나가 있어야 인정 (예: 계좌 끝자리). 비우면 확인 안 함
@@ -65,6 +87,17 @@
     if (typeof s.contact_phone === "string") out.contact_phone = s.contact_phone.slice(0, 20);
     if (s.account && typeof s.account === "object") for (const k of ["bank", "number", "holder"]) if (typeof s.account[k] === "string") out.account[k] = s.account[k].trim().slice(0, 40);
     if (Array.isArray(s.account_match)) out.account_match = s.account_match.filter((x) => typeof x === "string" && x.trim().length >= 3).map((x) => x.trim().slice(0, 30)).slice(0, 5);
+    if (s.promo && typeof s.promo === "object") {
+      const p = s.promo;
+      if (typeof p.enabled === "boolean") out.promo.enabled = p.enabled;
+      if (typeof p.title === "string" && p.title.trim()) out.promo.title = p.title.trim().slice(0, 40);
+      if (p.until === "" || (typeof p.until === "string" && /^\d{4}-\d\d-\d\d$/.test(p.until))) out.promo.until = p.until;
+      if (isInt(p.limit) && p.limit >= 0 && p.limit <= 10000) out.promo.limit = p.limit;
+      if (Array.isArray(p.items)) out.promo.items = p.items.filter((x) => x && typeof x.name === "string" && x.name.trim() && isInt(x.value) && x.value >= 0 && x.value <= 1e7)
+        .map((x) => ({ name: x.name.trim().slice(0, 40), value: x.value })).slice(0, 8);
+    }
+    if (Array.isArray(s.points)) out.points = s.points.filter((x) => x && typeof x.title === "string" && x.title.trim())
+      .map((x) => ({ title: x.title.trim().slice(0, 30), body: typeof x.body === "string" ? x.body.trim().slice(0, 120) : "" })).slice(0, 8);
     if (out.min_py > out.max_py) out.min_py = DEFAULTS.min_py;
     return out;
   }
@@ -99,9 +132,18 @@
 
   // 고객에게 보여 줄 설정 (계좌·대조용 값은 빼고)
   function publicConfig(c) {
-    const { per_py, min_total, min_py, max_py, included, extra, regions, buildings, round_to, deposit, hold_minutes, lead_days, max_days, slot_mode, closed_weekdays, notice, contact_phone } = c;
-    return { per_py, min_total, min_py, max_py, included, extra, regions, buildings, round_to, deposit, hold_minutes, lead_days, max_days, slot_mode, closed_weekdays, notice, contact_phone };
+    const { per_py, min_total, min_py, max_py, included, extra, regions, buildings, round_to, deposit, hold_minutes, lead_days, max_days, slot_mode, closed_weekdays, notice, contact_phone, points } = c;
+    return { per_py, min_total, min_py, max_py, included, extra, regions, buildings, round_to, deposit, hold_minutes, lead_days, max_days, slot_mode, closed_weekdays, notice, contact_phone, points };
   }
 
-  return { DEFAULTS, LIMITS, merge, quote, publicConfig };
+  // 혜택이 지금 적용되나: 켜짐 + 기한 안(today는 한국 날짜) + 선착순 남음(used = 혜택 받은 입금 대기·확정 예약 수)
+  function promoState(c, today, used) {
+    const p = c.promo;
+    const left = p.limit > 0 ? Math.max(0, p.limit - (used || 0)) : null;
+    const active = !!(p.enabled && p.items.length && (!p.until || today <= p.until) && (left === null || left > 0));
+    const worth = p.items.reduce((a, x) => a + x.value, 0);
+    return { active, title: p.title, until: p.until || null, limit: p.limit || null, left, items: p.items, worth };
+  }
+
+  return { DEFAULTS, LIMITS, merge, quote, publicConfig, promoState };
 });

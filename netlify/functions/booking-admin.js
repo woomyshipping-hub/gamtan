@@ -38,12 +38,13 @@ function makeHandler({ env = process.env, fetchImpl = fetch, now = () => Date.no
     try {
       if (event.httpMethod === "GET") {
         await store.expireStale(new Date(t).toISOString());
-        const [config, bookings, deposits] = await Promise.all([
+        const [config, bookings, deposits, used] = await Promise.all([
           store.getConfig(),
           store.listBookings(B.addDays(B.kstDate(t), -30)),
           store.listDeposits(new Date(t - 14 * 864e5).toISOString()),
+          store.promoUsed(),
         ]);
-        return reply(200, { config, bookings: bookings.map(strip), deposits });
+        return reply(200, { config, promo: Q.promoState(config, B.kstDate(t), used), bookings: bookings.map(strip), deposits });
       }
 
       let b;

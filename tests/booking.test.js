@@ -23,6 +23,7 @@ function fakeStore(saved = CFG) {
     expireStale: async (iso) => { for (const b of s.bookings) if (b.status === "pending" && b.hold_until < iso) b.status = "expired"; },
     active: async (from, to) => s.bookings.filter((b) => active(b) && b.work_date >= from && b.work_date <= to).map((b) => ({ ...b })),
     pending: async () => s.bookings.filter((b) => b.status === "pending").map((b) => ({ ...b })),
+    promoUsed: async () => s.bookings.filter((b) => b.promo && (b.status === "pending" || b.status === "confirmed")).length,
     insert: async (row) => { const b = { id: crypto.randomUUID(), created_at: new Date(NOW).toISOString(), ...row }; if (clash(b)) throw e409(); s.bookings.push(b); return { ...b }; },
     byCode: async (code) => { const b = s.bookings.find((x) => x.code === code); return b ? { ...b } : null; },
     byId: async (id) => { const b = s.bookings.find((x) => x.id === id); return b ? { ...b } : null; },
@@ -294,4 +295,27 @@ test("관리 API: 설정 저장 시 빈 칸·틀린 값은 지금 값 유지, �
   assert.equal(c.deposit, 70000);
   assert.deepEqual(c.included, { rooms: 2, baths: 2, verandas: 2 });
   assert.deepEqual(c.account, { bank: "농협", number: "000-0000-0000", holder: "감탄" });
+});
+
+test("혜택: 신청 순간 적용되면 예약·캘린더 메모에 남고, 선착순·마감일이 지나면 빠짐", async () => {
+  const promo = { enabled: true, title: "온라인 예약 혜택", until: "2026-12-31", limit: 2, items: [{ name: "피톤치드 연무 시공", value: 50000 }, { name: "7일 무료 재방문", value: 0 }] };
+  const s = setup({ config: { ...CFG, promo } });
+  const g = J(await s.book(get({ month: "2026-11" })));
+  assert.equal(g.promo.active, true);
+  assert.equal(g.promo.left, 2);
+  assert.equal(g.promo.worth, 50000);
+  const a = J(await s.book(post(FORM)));
+  assert.deepEqual(a.booking.promo, { title: "온라인 예약 혜택", items: promo.items });
+  await s.deposit(dep("홍길동님이 50,000원을 입금했어요"));
+  assert.match(s.cal.inserted[0].description, /혜택: 피톤치드 연무 시공, 7일 무료 재방문 \(온라인 예약 혜택\)/);
+  assert.equal(J(await s.book(get({ month: "2026-11" }))).promo.left, 1);
+  J(await s.book(post({ ...FORM, work_date: "2026-11-21", name: "김철수", depositor: "김철수", phone: "010-2222-3333" })));
+  const full = J(await s.book(get({ month: "2026-11" }))).promo;
+  assert.equal(full.active, false); // 선착순 2건 끝
+  const third = J(await s.book(post({ ...FORM, work_date: "2026-11-23", name: "이영희", depositor: "이영희", phone: "010-4444-5555" })));
+  assert.equal(third.booking.promo, null);
+
+  const late = setup({ config: { ...CFG, promo: { ...promo, until: "2026-11-13" } } });
+  assert.equal(J(await late.book(get({ month: "2026-11" }))).promo.active, false);
+  assert.equal(J(await late.book(post(FORM))).booking.promo, null);
 });

@@ -23,6 +23,7 @@ create table bookings (
   verandas smallint not null check (verandas between 0 and 20),
   memo text,
   quote jsonb not null,                      -- 신청 시점 견적 내역 (단가가 바뀌어도 이 금액 유지)
+  promo jsonb,                               -- 신청 시점에 받은 혜택 {title, items:[{name,value}]} (없으면 null). 선착순 수를 셀 때 쓴다
   total integer not null check (total >= 0),
   deposit integer not null check (deposit >= 0),
   hold_until timestamptz not null,           -- 이때까지 입금이 없으면 expired → 날짜가 다시 열림

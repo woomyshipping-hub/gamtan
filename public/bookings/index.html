@@ -115,6 +115,20 @@ textarea{padding:8px 10px;min-height:70px;resize:vertical}
           <label class="fld"><span>지역과 출장비 (한 줄에 "지역=금액", 예: 거제=30000)</span><textarea id="regions" rows="5"></textarea></label>
           <label class="fld"><span>건물 유형 (쉼표로 구분)</span><input id="buildings"></label>
         </fieldset>
+        <fieldset><legend>혜택 (예약 페이지 맨 위·견적 칸에 표시, 신청 순간 적용된 혜택은 예약과 캘린더 메모에 남음)</legend>
+          <div class="cg">
+            <label class="fld"><span>혜택 켜기</span><select id="promo_enabled"><option value="1">켜기</option><option value="0">끄기</option></select></label>
+            <label class="fld"><span>혜택 이름</span><input data-k="promo.title" maxlength="40"></label>
+            <label class="fld"><span>신청 마감일 (비우면 기한 없음)</span><input data-k="promo.until" type="date"></label>
+            <label class="fld"><span>선착순 건수 (0이면 제한 없음)</span><input data-k="promo.limit" type="number" min="0"></label>
+          </div>
+          <label class="fld"><span>무료 서비스 (한 줄에 "이름=정상가", 정상가 0이면 "○원 상당" 안 보임)</span><textarea id="promo_items" rows="4"></textarea></label>
+          <p class="sm" id="promoNow"></p>
+          <p class="sm">"○원 상당"은 그 서비스를 따로 받는 실제 가격이 있어야 쓸 수 있습니다(표시광고법). 마감일·선착순도 실제로 지켜지는 값만 넣으세요.</p>
+        </fieldset>
+        <fieldset><legend>장점 (예약 페이지 혜택 아래 카드, 사실인 것만)</legend>
+          <label class="fld"><span>한 줄에 "제목 | 설명"</span><textarea id="points" rows="6"></textarea></label>
+        </fieldset>
         <fieldset><legend>예약</legend>
           <div class="cg">
             <label class="fld"><span>예약금 (원)</span><input data-k="deposit" type="number" min="0" step="1000"></label>
@@ -199,7 +213,7 @@ textarea{padding:8px 10px;min-height:70px;resize:vertical}
         <td>${esc(b.region)} ${b.area_py}평 ${esc(b.building)}<span class="sub">방${b.rooms} 화${b.baths} 베${b.verandas} · ${esc(b.address)}</span>${b.memo ? `<span class="sub">요청: ${esc(b.memo)}</span>` : ""}</td>
         <td class="r">${won(b.total)}</td>
         <td class="r">${won(b.deposit)}${paid}</td>
-        <td><span class="st ${b.status}">${ST[b.status] || b.status}</span>${b.status === "confirmed" ? `<span class="sub">${b.gcal_event_id ? "캘린더 등록됨" : "캘린더 미등록"}${b.confirmed_by === "manual" ? " · 수동" : ""}</span>` : ""}</td>
+        <td><span class="st ${b.status}">${ST[b.status] || b.status}</span>${b.promo ? `<span class="sub">혜택: ${esc(b.promo.items.map((x) => x.name).join(", "))}</span>` : ""}${b.status === "confirmed" ? `<span class="sub">${b.gcal_event_id ? "캘린더 등록됨" : "캘린더 미등록"}${b.confirmed_by === "manual" ? " · 수동" : ""}</span>` : ""}</td>
         <td><div class="acts">${acts.join("")}</div></td></tr>`;
     }).join("");
   }
@@ -253,6 +267,11 @@ textarea{padding:8px 10px;min-height:70px;resize:vertical}
     $("buildings").value = c.buildings.join(", ");
     $("slot_mode").value = c.slot_mode;
     $("account_match").value = c.account_match.join(", ");
+    $("promo_enabled").value = c.promo.enabled ? "1" : "0";
+    $("promo_items").value = c.promo.items.map((x) => `${x.name}=${x.value}`).join("\n");
+    $("points").value = c.points.map((x) => `${x.title} | ${x.body}`).join("\n");
+    const p = D.promo;
+    $("promoNow").innerHTML = p ? (p.active ? `<b>지금 적용 중</b>${p.left !== null ? ` · 선착순 남은 ${p.left}건` : ""}${p.worth ? ` · 합계 ${won(p.worth)} 상당` : ""}` : "지금은 적용 안 됨 (꺼짐·기한 지남·선착순 마감)") : "";
     $("wk").innerHTML = DOW.map((d, i) => `<label><input type="checkbox" value="${i}"${c.closed_weekdays.includes(i) ? " checked" : ""}>${d}</label>`).join("");
     preview();
   }
@@ -264,6 +283,10 @@ textarea{padding:8px 10px;min-height:70px;resize:vertical}
     out.slot_mode = $("slot_mode").value;
     out.account_match = $("account_match").value.split(",").map((x) => x.trim()).filter(Boolean);
     out.closed_weekdays = [...$("wk").querySelectorAll("input:checked")].map((x) => +x.value);
+    out.promo = { ...(out.promo || {}), enabled: $("promo_enabled").value === "1",
+      items: $("promo_items").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.lastIndexOf("="); return i < 0 ? { name: l, value: 0 } : { name: l.slice(0, i).trim(), value: Number(l.slice(i + 1).replace(/[^\d]/g, "")) || 0 }; }) };
+    if (out.promo.limit === null) delete out.promo.limit;
+    out.points = $("points").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.indexOf("|"); return i < 0 ? { title: l, body: "" } : { title: l.slice(0, i).trim(), body: l.slice(i + 1).trim() }; });
     return out;
   }
   function preview() {
