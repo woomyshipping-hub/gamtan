@@ -1,4 +1,5 @@
 // 로컬 확인용 서버 (배포 없이 화면 확인): node tools/dev-server.js → http://localhost:8787
+// 같은 와이파이의 휴대폰에서도 열린다: 시작할 때 찍히는 http://<이 컴퓨터 내부 IP>:8787 주소를 쓴다.
 // public/ 정적 파일 + /api/booking, /api/booking-admin, /api/deposit 를 가짜 저장소·가짜 캘린더로 실행한다 (Supabase·구글·Netlify 안 씀).
 //   /reserve/                고객 예약 페이지
 //   /bookings/#k=kkkk…(40자)  관리 화면 (아래 DEV_KEY)
@@ -82,4 +83,17 @@ http.createServer(async (req, res) => {
   if (u.pathname === "/__state") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ s, events })); }
   let p = path.join(ROOT, "public", u.pathname); if (p.endsWith("/")) p += "index.html";
   fs.readFile(p, (e, d) => { if (e) { res.writeHead(404); return res.end(); } res.writeHead(200, { "Content-Type": TYPES[path.extname(p)] || "application/octet-stream" }); res.end(d); });
-}).listen(PORT, "0.0.0.0", () => console.log(`감탄 로컬 서버: http://localhost:${PORT}/reserve/  ·  관리 http://localhost:${PORT}/bookings/#k=${KEY}  ·  개발용 http://localhost:${PORT}/__dev`));
+}).listen(PORT, "0.0.0.0", () => {
+  // 같은 와이파이의 휴대폰·다른 컴퓨터에서 열 주소 (이 컴퓨터의 내부 IP)
+  const lan = Object.values(require("os").networkInterfaces()).flat()
+    .filter((a) => a && a.family === "IPv4" && !a.internal).map((a) => a.address);
+  const show = (host) => [
+    `  고객 예약   http://${host}:${PORT}/reserve/`,
+    `  관리 화면   http://${host}:${PORT}/bookings/#k=${KEY}`,
+    `  입금 흉내   http://${host}:${PORT}/__dev`,
+  ].join("\n");
+  console.log(`\n감탄 로컬 서버 (가짜 데이터, 끄려면 Ctrl+C)\n\n이 컴퓨터에서:\n${show("localhost")}`);
+  for (const ip of lan) console.log(`\n같은 와이파이의 휴대폰에서 (${ip}):\n${show(ip)}`);
+  if (!lan.length) console.log("\n(와이파이 주소를 찾지 못했습니다. 네트워크 연결을 확인하세요)");
+  console.log("\n휴대폰에서 안 열리면: 맥 시스템 설정 → 네트워크 → 방화벽에서 node 연결 허용, 휴대폰이 같은 와이파이인지 확인\n");
+});

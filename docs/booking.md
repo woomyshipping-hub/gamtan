@@ -43,7 +43,7 @@
 관리 화면에서 취소하면 캘린더 일정 제목 끝에 `취소확인`이 붙는다(정산 페이지·빈 날짜 계산에서 빠짐). 예약금 환불은 직접 한다.
 
 ## 로컬 확인 (배포 없이)
-`node tools/dev-server.js` → `http://localhost:8787/reserve/` (고객), `/bookings/#k=` + `k` 40개 (관리), `/__dev` (입금 문자 흉내·초기화). 가짜 저장소·캘린더라 Supabase·구글·Netlify를 쓰지 않는다.
+`node tools/dev-server.js` → `http://localhost:8787/reserve/` (고객), `/bookings/#k=` + `k` 40개 (관리), `/__dev` (입금 문자 흉내·초기화). 가짜 저장소·캘린더라 Supabase·구글·Netlify를 쓰지 않는다. 같은 와이파이의 휴대폰에서는 시작할 때 찍히는 `http://<맥 내부 IP>:8787/…` 주소로 연다 (안 열리면 맥 방화벽에서 node 허용).
 
 ## 배포 전 할 일
 1. Supabase에 `supabase/migrations/20261114000000_booking.sql` 적용
