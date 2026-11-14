@@ -122,9 +122,9 @@ textarea{padding:8px 10px;min-height:70px;resize:vertical}
             <label class="fld"><span>신청 마감일 (비우면 기한 없음)</span><input data-k="promo.until" type="date"></label>
             <label class="fld"><span>선착순 건수 (0이면 제한 없음)</span><input data-k="promo.limit" type="number" min="0"></label>
           </div>
-          <label class="fld"><span>무료 서비스 (한 줄에 "이름=정상가", 정상가 0이면 "○원 상당" 안 보임)</span><textarea id="promo_items" rows="4"></textarea></label>
+          <label class="fld"><span>무료 서비스 (한 줄에 "이름=정가", 화면에 정가를 긋고 "무료" 표시. 정가 0이면 "무료"만)</span><textarea id="promo_items" rows="4"></textarea></label>
           <p class="sm" id="promoNow"></p>
-          <p class="sm">"○원 상당"은 그 서비스를 따로 받는 실제 가격이 있어야 쓸 수 있습니다(표시광고법). 마감일·선착순도 실제로 지켜지는 값만 넣으세요.</p>
+          <p class="sm">정가는 그 서비스를 따로 받는 실제 가격이어야 합니다(표시광고법). 마감일·선착순도 실제로 지켜지는 값만 넣으세요.</p>
         </fieldset>
         <fieldset><legend>장점 (예약 페이지 혜택 아래 카드, 사실인 것만)</legend>
           <label class="fld"><span>한 줄에 "제목 | 설명"</span><textarea id="points" rows="6"></textarea></label>
@@ -271,7 +271,7 @@ textarea{padding:8px 10px;min-height:70px;resize:vertical}
     $("promo_items").value = c.promo.items.map((x) => `${x.name}=${x.value}`).join("\n");
     $("points").value = c.points.map((x) => `${x.title} | ${x.body}`).join("\n");
     const p = D.promo;
-    $("promoNow").innerHTML = p ? (p.active ? `<b>지금 적용 중</b>${p.left !== null ? ` · 선착순 남은 ${p.left}건` : ""}${p.worth ? ` · 합계 ${won(p.worth)} 상당` : ""}` : "지금은 적용 안 됨 (꺼짐·기한 지남·선착순 마감)") : "";
+    $("promoNow").innerHTML = p ? (p.active ? `<b>지금 적용 중</b>${p.left !== null ? ` · 선착순 남은 ${p.left}건` : ""}${p.worth ? ` · 혜택 합계 ${won(p.worth)}` : ""}` : "지금은 적용 안 됨 (꺼짐·기한 지남·선착순 마감)") : "";
     $("wk").innerHTML = DOW.map((d, i) => `<label><input type="checkbox" value="${i}"${c.closed_weekdays.includes(i) ? " checked" : ""}>${d}</label>`).join("");
     preview();
   }
