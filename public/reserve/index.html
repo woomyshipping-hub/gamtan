@@ -111,8 +111,7 @@ details p{margin:6px 0 0}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.92rem;margin:0}
 .kv dt{color:var(--muted)}
 .kv dd{margin:0;text-align:right}
-.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin-right:6px;animation:p 1.4s ease-in-out infinite}
-@keyframes p{50%{opacity:.25}}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);margin-right:6px}
 
 @media (max-width:860px){
   .cols{grid-template-columns:1fr}
@@ -385,7 +384,7 @@ details p{margin:6px 0 0}
     }
     if (b.status === "pending") {
       const a = b.account || {};
-      r.innerHTML = `<section class="panel"><div class="state wait"><span class="tag"><span class="pulse"></span>입금 확인 중</span><h2>예약금을 입금해 주세요</h2><p class="sm"><b class="num">${fmtTime(b.hold_until)}</b>까지 입금이 확인되면 자동으로 확정됩니다. 이 화면을 열어 두면 바로 바뀝니다.</p></div>
+      r.innerHTML = `<section class="panel"><div class="state wait"><span class="tag"><span class="dot"></span>입금 확인 중</span><h2>예약금을 입금해 주세요</h2><p class="sm"><b class="num">${fmtTime(b.hold_until)}</b>까지 입금이 확인되면 자동으로 확정됩니다. 이 화면을 열어 두면 바로 바뀝니다.</p></div>
         <div class="acct num">
           <div class="row"><span>은행</span><b>${esc(a.bank)}</b></div>
           <div class="row"><span>계좌번호</span><b>${esc(a.number)}<button type="button" class="copy" data-copy="${esc(a.number)}">복사</button></b></div>
