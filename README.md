@@ -6,6 +6,7 @@
 - `public/index.html` : 화면 전체 (달력, 주/월 요약, 일정 상세, 정산 기준 패널). 프레임워크 없음.
 - `api/events.js` : 구글 캘린더 → 일정 JSON. 메모의 숫자(추가금·작업인원·정산·한준님 금액)만 내려보냄.
 - `api/state.js` : 일정별 직접 입력값과 정산 기준을 Redis에 저장/조회.
+- `public/reserve/` 고객 예약, `public/bookings/` 예약 관리, `netlify/functions/booking*.js`·`deposit.js`: 예약·입금 자동 확인 ([docs/booking.md](docs/booking.md))
 - 환경변수: `REDIS_URL`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_CALENDAR_ID` (값은 저장소에 없음)
 
 ## Netlify 배포 (M0)
