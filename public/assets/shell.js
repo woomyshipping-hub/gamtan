@@ -1,15 +1,16 @@
-// 감탄 운영 화면 공통 왼쪽 사이드바 (정산 · 장부 · 마케팅) + 숨기기.
+// 감탄 운영 화면 공통 왼쪽 사이드바 (정산 · 장부 · 마케팅 · AI 비서) + 숨기기.
 // PC: 왼쪽 고정, « 버튼으로 아이콘만 남기고 접기(이 브라우저에 기억). 휴대폰: 왼쪽 위 ☰ 버튼으로 열고 닫기.
 (() => {
   const ICON = {
     settle: '<path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/>',
     ledger: '<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/>',
     mkt: '<path d="M4 10v4h3l6 4V6L7 10z"/><path d="M17 9a4 4 0 0 1 0 6"/>',
+    ai: '<path d="M5 5h14v10H10l-5 4z"/><path d="M12 7.5l.9 1.8 1.8.9-1.8.9-.9 1.8-.9-1.8-1.8-.9 1.8-.9z"/>',
     fold: '<path d="M15 6l-6 6 6 6"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   };
   const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
-  const LINKS = [["/", "정산", "settle"], ["/ledger/", "장부", "ledger"], ["/marketing/", "마케팅", "mkt"]];
+  const LINKS = [["/", "정산", "settle"], ["/ledger/", "장부", "ledger"], ["/marketing/", "마케팅", "mkt"], ["/assistant/", "AI 비서", "ai"]];
   const here = location.pathname;
   const isCur = (href) => (href === "/" ? here === "/" || here === "/index.html" : here.startsWith(href));
   const STORE = "gamtan.sideCollapsed";
