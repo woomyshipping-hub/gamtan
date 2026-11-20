@@ -7,6 +7,12 @@
   node_bundler = "esbuild"
 
 [[redirects]]
+  from = "/api/assistant"
+  to = "/.netlify/functions/assistant"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/events"
   to = "/.netlify/functions/events"
   status = 200
